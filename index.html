@@ -1417,6 +1417,9 @@
       <button class="nav-tab" role="tab" aria-selected="false" data-tab="bills">
         💧 Bills &amp; Utilities
       </button>
+      <button class="nav-tab" role="tab" aria-selected="false" data-tab="expenses">
+        💸 Expenses (<span id="expensesNavCount">0</span>)
+      </button>
       <button class="nav-tab" role="tab" aria-selected="false" data-tab="tenant-pay" style="color: var(--settled); font-weight: 700;">
         📱 Pay Rent (Tenant Portal)
       </button>
@@ -1553,6 +1556,9 @@
           </button>
           <button class="btn btn-secondary" id="dashAddBillBtn">
             + Add Bill (Water/Power)
+          </button>
+          <button class="btn btn-secondary" id="dashAddExpenseBtn">
+            - Record Expense
           </button>
           <button class="btn btn-secondary" id="dashLateFeeBtn" title="Assess late payment penalties for overdue units">
             ⏰ Assess Late Fees
@@ -1741,6 +1747,122 @@
           </thead>
           <tbody id="billsTableBody">
             <!-- Injected via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ======================================================================
+         VIEW 5: LANDLORD EXPENSES & NET OPERATING INCOME (NOI)
+         ====================================================================== -->
+    <section id="tab-expenses" class="tab-pane" style="display: none;" role="tabpanel">
+      <div class="section-header">
+        <div>
+          <h2>Property Expenses &amp; Net Operating Income</h2>
+          <p class="small-meta">Track caretaker salaries, security, repairs, common KPLC &amp; bulk water; calculate monthly Net Cash Flow for <span class="current-month-label">this month</span></p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary" id="openPnlReportBtn" title="View &amp; Print Monthly Profit and Loss (Income vs Expense) Statement">
+            🖨️ Profit &amp; Loss Statement
+          </button>
+          <button class="btn btn-secondary" id="exportExpensesCsvBtn" title="Export expenses ledger to Excel CSV">
+            📊 Export CSV
+          </button>
+          <button class="btn btn-primary" id="openAddExpenseModalBtn">
+            + Record Expense
+          </button>
+        </div>
+      </div>
+
+      <!-- Financial Cash Flow Snapshot (P&L Bar) -->
+      <div class="ledger-cashboard" style="margin-bottom: 1.5rem; background: var(--bg-surface); border: 1px solid var(--border-main);">
+        <div class="cashboard-top">
+          <div class="cashboard-title">
+            <span>Net Operating Income (NOI) &bull; <span class="current-month-label">This Month</span></span>
+          </div>
+          <div id="expenseProfitabilityTag">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <div class="cashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+          <div class="cashboard-metric metric-collected">
+            <div class="metric-label">
+              <span>Gross Collections (Inflow)</span>
+              <span>💰</span>
+            </div>
+            <div class="metric-value tabular-nums" id="expStatIncome">KES 0</div>
+            <div class="metric-sub" id="expStatIncomeSub">Rent &amp; bills collected</div>
+          </div>
+
+          <div class="cashboard-metric metric-owing">
+            <div class="metric-label">
+              <span>Operating Expenses (Outflow)</span>
+              <span>📉</span>
+            </div>
+            <div class="metric-value tabular-nums" id="expStatExpenses">KES 0</div>
+            <div class="metric-sub" id="expStatExpensesSub">0 expenses recorded</div>
+          </div>
+
+          <div class="cashboard-metric" id="expMetricNetProfitCard">
+            <div class="metric-label">
+              <span>Net Cash Flow (Landlord Profit)</span>
+              <span>🏦</span>
+            </div>
+            <div class="metric-value tabular-nums" id="expStatNetProfit">KES 0</div>
+            <div class="metric-sub" id="expStatProfitMargin">Margin: 0%</div>
+          </div>
+
+          <div class="cashboard-metric">
+            <div class="metric-label">
+              <span>Expense Ratio (OER)</span>
+              <span>⚖️</span>
+            </div>
+            <div class="metric-value tabular-nums" id="expStatOer">0%</div>
+            <div class="metric-sub">Operating cost vs revenue</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search & Category Filters -->
+      <div class="filter-bar">
+        <div class="search-input-wrap">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input type="text" id="expenseSearchInput" class="search-input" placeholder="Search expenses by title, payee, ref, or note..." aria-label="Search expenses">
+        </div>
+        <select id="expenseCategoryFilter" class="form-select" style="max-width: 200px;" aria-label="Filter by expense category">
+          <option value="all">All Categories</option>
+          <option value="caretaker">👷 Caretaker / Staff</option>
+          <option value="security">🛡️ Security / Askari</option>
+          <option value="repairs">🛠️ Repairs &amp; Maintenance</option>
+          <option value="electricity_common">⚡ Common Electricity (KPLC)</option>
+          <option value="water_bulk">💧 Bulk Water (NCWSC)</option>
+          <option value="garbage">🗑️ Garbage Collection</option>
+          <option value="rates_taxes">🏛️ County Rates &amp; Taxes</option>
+          <option value="other">📦 Other Property Costs</option>
+        </select>
+        <select id="expenseScopeFilter" class="form-select" style="max-width: 170px;" aria-label="Filter by date scope">
+          <option value="month">Selected Month</option>
+          <option value="all">All-Time History</option>
+        </select>
+      </div>
+
+      <!-- Expenses Data Table -->
+      <div class="table-container">
+        <table class="data-table" id="expensesTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Category</th>
+              <th>Expense Title / Payee</th>
+              <th>M-Pesa / Receipt Ref</th>
+              <th>Notes</th>
+              <th style="text-align: right;">Amount (KES)</th>
+              <th style="text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="expensesTableBody">
+            <!-- Dynamically populated via renderExpenses() -->
           </tbody>
         </table>
       </div>
@@ -2254,6 +2376,14 @@
 
             <button class="btn btn-secondary" id="exportPaymentsCsvBtn">
               📊 Export Payments Ledger (CSV)
+            </button>
+
+            <button class="btn btn-secondary" id="settingsExportExpensesCsvBtn">
+              📊 Export Expenses Ledger (CSV)
+            </button>
+
+            <button class="btn btn-secondary" id="settingsPnlBtn" title="Generate Monthly Profit &amp; Loss Statement">
+              🖨️ Print Monthly Profit &amp; Loss (PDF)
             </button>
 
             <button class="btn btn-secondary" id="settingsPrintPaymentsLedgerBtn" title="Open printable payment ledger and cash book">
@@ -3096,6 +3226,124 @@
   </div>
 
   <!-- ========================================================================
+       MODAL: RECORD / EDIT LANDLORD EXPENSE
+       ======================================================================== -->
+  <div class="modal-backdrop" id="expenseModal" role="dialog" aria-modal="true" aria-labelledby="expenseModalTitle">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 id="expenseModalTitle">Record Property Expense</h3>
+        <button class="modal-close-btn" data-close-modal="expenseModal" aria-label="Close modal">&times;</button>
+      </div>
+      <form id="expenseForm">
+        <div class="modal-body">
+          <input type="hidden" id="expenseEditId" value="">
+
+          <div class="form-group" id="groupExpenseTitle">
+            <label for="inputExpenseTitle">Expense Title / Description *</label>
+            <input type="text" id="inputExpenseTitle" class="form-input" placeholder="e.g. Caretaker Monthly Wages or Plumber Valve Repair" required>
+            <span class="field-error">Please enter an expense title.</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" id="groupExpenseCategory">
+              <label for="selectExpenseCategory">Category *</label>
+              <select id="selectExpenseCategory" class="form-select" required>
+                <option value="caretaker">👷 Caretaker / Staff Wages</option>
+                <option value="security">🛡️ Security Guards / Askari</option>
+                <option value="repairs">🛠️ Repairs &amp; Maintenance</option>
+                <option value="electricity_common">⚡ Common Electricity (KPLC)</option>
+                <option value="water_bulk">💧 Bulk Water Supply (NCWSC)</option>
+                <option value="garbage">🗑️ Garbage Collection</option>
+                <option value="rates_taxes">🏛️ County Rates &amp; Taxes</option>
+                <option value="other">📦 Other Property Costs</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="groupExpenseMonth">
+              <label for="inputExpenseMonth">Expense Month *</label>
+              <input type="month" id="inputExpenseMonth" class="form-input" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" id="groupExpenseAmount">
+              <label for="inputExpenseAmount">Amount (KES) *</label>
+              <input type="number" id="inputExpenseAmount" class="form-input" min="1" step="50" placeholder="e.g. 5000" required>
+              <span class="field-error">Please enter a valid amount.</span>
+            </div>
+
+            <div class="form-group" id="groupExpenseDate">
+              <label for="inputExpenseDate">Payment Date *</label>
+              <input type="date" id="inputExpenseDate" class="form-input" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="inputExpensePayee">Paid To / Vendor / Person</label>
+              <input type="text" id="inputExpensePayee" class="form-input" placeholder="e.g. John Mwangi or Kenya Power">
+            </div>
+
+            <div class="form-group">
+              <label for="inputExpenseRef">M-Pesa / Receipt Ref</label>
+              <input type="text" id="inputExpenseRef" class="form-input" placeholder="e.g. QK876H219J or Cheque #104">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="inputExpenseNotes">Additional Notes (Optional)</label>
+            <textarea id="inputExpenseNotes" class="form-input" rows="2" placeholder="e.g. Purchased 2 bags of cement and paid plumber KES 1,500 labor"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="expenseModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveExpenseBtn">Save Expense</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: MONTHLY PROFIT & LOSS / CASH FLOW STATEMENT
+       ======================================================================== -->
+  <div class="modal-backdrop" id="pnlModal" role="dialog" aria-modal="true" aria-labelledby="pnlModalTitle">
+    <div class="modal-dialog" style="max-width: 900px; width: 96%;">
+      <div class="modal-header">
+        <div>
+          <h3 id="pnlModalTitle">🖨️ Monthly Profit &amp; Loss Statement</h3>
+          <p class="small-meta">Net Operating Income (Gross Collections minus Operating Expenses)</p>
+        </div>
+        <button class="modal-close-btn" data-close-modal="pnlModal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+        <!-- Filter Controls (hidden in print) -->
+        <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-alt); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-main); margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <label for="pnlModalMonthSelect" style="font-weight: 600; font-size: 0.85rem;">Statement Month:</label>
+            <input type="month" id="pnlModalMonthSelect" class="form-input" style="padding: 0.35rem 0.6rem; font-size: 0.875rem;">
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn btn-sm btn-primary" id="printPnlActionBtn">
+              🖨️ Print / Save PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Printable P&L Statement Area -->
+        <div id="pnlPreviewContainer" class="printable-area">
+          <!-- Dynamically populated via renderPrintablePnlReport() -->
+        </div>
+      </div>
+
+      <div class="modal-footer no-print">
+        <button type="button" class="btn btn-secondary" data-close-modal="pnlModal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
        MODAL 7: HOW THIS WORKS EXPLAINER
        ======================================================================== -->
   <div class="modal-backdrop" id="howItWorksModal" role="dialog" aria-modal="true" aria-labelledby="howItWorksModalTitle">
@@ -3200,6 +3448,7 @@
         units: [],
         payments: [],
         bills: [],
+        expenses: [],
         security: {
           maskPhoneNumbers: false
         },
@@ -3229,6 +3478,7 @@
             if (!Array.isArray(appState.units)) appState.units = [];
             if (!Array.isArray(appState.payments)) appState.payments = [];
             if (!Array.isArray(appState.bills)) appState.bills = [];
+            if (!Array.isArray(appState.expenses)) appState.expenses = [];
             if (!appState.security) appState.security = { maskPhoneNumbers: false };
             if (!appState.lateFeePolicy) {
               appState.lateFeePolicy = {
@@ -3843,6 +4093,7 @@
         renderUnits();
         renderPayments();
         renderBills();
+        renderExpenses();
         renderTenantPay();
         renderSettings();
       }
@@ -3852,6 +4103,15 @@
         document.getElementById('monthDisplay').textContent = text;
         document.getElementById('cashboardMonthTag').textContent = text;
 
+        const dashMonthExpenses = (appState.expenses || [])
+          .filter(e => (e.month === activeMonth || (e.date && e.date.substring(0, 7) === activeMonth)))
+          .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        const dashNetFlow = metrics.monthCollected - dashMonthExpenses;
+        const subtextEl = document.getElementById('cashboardSubtext');
+        if (subtextEl) {
+          subtextEl.innerHTML = `Collections: <strong>${formatKES(metrics.monthCollected)}</strong> &bull; Expenses: <strong>${formatKES(dashMonthExpenses)}</strong> &bull; Net Profit: <strong style="color: ${dashNetFlow >= 0 ? 'var(--settled)' : 'var(--alert-owing)'}">${formatKES(dashNetFlow)}</strong>`;
+        }
+
         const monthLabels = document.querySelectorAll('.current-month-label');
         monthLabels.forEach(el => el.textContent = text);
 
@@ -3859,6 +4119,10 @@
         document.getElementById('unitsNavCount').textContent = appState.units.length;
         const monthPaymentsCount = appState.payments.filter(p => p.date && p.date.substring(0, 7) === activeMonth).length;
         document.getElementById('paymentsNavCount').textContent = monthPaymentsCount;
+
+        const monthExpensesCount = (appState.expenses || []).filter(e => (e.month === activeMonth || (e.date && e.date.substring(0, 7) === activeMonth))).length;
+        const expNav = document.getElementById('expensesNavCount');
+        if (expNav) expNav.textContent = monthExpensesCount;
 
         // Show/hide onboarding banner
         const onboardingCard = document.getElementById('onboardingCard');
@@ -4249,6 +4513,471 @@
         `;
 
         document.getElementById('printablePaymentLedgerArea').innerHTML = html;
+      }
+
+      // --- LANDLORD EXPENSE TRACKER & NET PROFIT ENGINE ---
+      const EXPENSE_CATEGORIES = {
+        caretaker: { label: '👷 Caretaker / Staff Wages', color: '#047857' },
+        security: { label: '🛡️ Security Guards / Askari', color: '#1d4ed8' },
+        repairs: { label: '🛠️ Repairs & Maintenance', color: '#b45309' },
+        electricity_common: { label: '⚡ Common Electricity (KPLC)', color: '#6d28d9' },
+        water_bulk: { label: '💧 Bulk Water Supply (NCWSC)', color: '#0284c7' },
+        garbage: { label: '🗑️ Garbage Collection', color: '#4b5563' },
+        rates_taxes: { label: '🏛️ County Rates & Taxes', color: '#be123c' },
+        other: { label: '📦 Other Property Costs', color: '#374151' }
+      };
+
+      let expenseSearchQuery = '';
+      let expenseCategoryFilter = 'all';
+      let expenseScopeFilter = 'month';
+
+      function renderExpenses() {
+        const tbody = document.getElementById('expensesTableBody');
+        let expenses = [...(appState.expenses || [])];
+
+        // Scope filter
+        if (expenseScopeFilter === 'month') {
+          expenses = expenses.filter(e => (e.month === activeMonth || (e.date && e.date.substring(0, 7) === activeMonth)));
+        }
+
+        // Search query
+        if (expenseSearchQuery) {
+          const q = expenseSearchQuery.toLowerCase();
+          expenses = expenses.filter(e => {
+            const t = (e.title || '').toLowerCase();
+            const p = (e.paidTo || '').toLowerCase();
+            const r = (e.receiptRef || '').toLowerCase();
+            const n = (e.notes || '').toLowerCase();
+            return t.includes(q) || p.includes(q) || r.includes(q) || n.includes(q);
+          });
+        }
+
+        // Category filter
+        if (expenseCategoryFilter !== 'all') {
+          expenses = expenses.filter(e => e.category === expenseCategoryFilter);
+        }
+
+        // Sort descending by date
+        expenses.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        // Update P&L metrics for active month
+        const monthPayments = appState.payments
+          .filter(p => p.date && p.date.substring(0, 7) === activeMonth)
+          .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+        const monthExpensesList = (appState.expenses || []).filter(e => 
+          (e.month === activeMonth || (e.date && e.date.substring(0, 7) === activeMonth))
+        );
+        const monthExpensesTotal = monthExpensesList.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        const netCashFlow = monthPayments - monthExpensesTotal;
+        const oer = monthPayments > 0 ? Math.round((monthExpensesTotal / monthPayments) * 100) : 0;
+        const profitMargin = monthPayments > 0 ? Math.round((netCashFlow / monthPayments) * 100) : 0;
+
+        document.getElementById('expStatIncome').textContent = formatKES(monthPayments);
+        document.getElementById('expStatIncomeSub').textContent = `${appState.payments.filter(p => p.date && p.date.substring(0, 7) === activeMonth).length} payments collected`;
+
+        document.getElementById('expStatExpenses').textContent = formatKES(monthExpensesTotal);
+        document.getElementById('expStatExpensesSub').textContent = `${monthExpensesList.length} expense${monthExpensesList.length === 1 ? '' : 's'} in ${formatMonthName(activeMonth)}`;
+
+        const netEl = document.getElementById('expStatNetProfit');
+        netEl.textContent = formatKES(netCashFlow);
+        netEl.style.color = netCashFlow >= 0 ? 'var(--settled)' : 'var(--alert-owing)';
+
+        document.getElementById('expStatProfitMargin').textContent = `Profit Margin: ${profitMargin}%`;
+        document.getElementById('expStatOer').textContent = `${oer}%`;
+
+        const profitTag = document.getElementById('expenseProfitabilityTag');
+        if (profitTag) {
+          if (netCashFlow > 0) {
+            profitTag.innerHTML = `<span style="background: #047857; color: white; padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700;">🟢 PROFITABLE (+${formatKES(netCashFlow)})</span>`;
+          } else if (netCashFlow < 0) {
+            profitTag.innerHTML = `<span style="background: #b91c1c; color: white; padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700;">🔴 DEFICIT (${formatKES(netCashFlow)})</span>`;
+          } else {
+            profitTag.innerHTML = `<span style="background: #4b5563; color: white; padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700;">⚪ BREAK-EVEN (KES 0)</span>`;
+          }
+        }
+
+        if (expenses.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 2.5rem 1rem;">
+                <div class="small-meta" style="font-size: 0.95rem; margin-bottom: 0.5rem;">No property expenses recorded for this view.</div>
+                <button class="btn btn-sm btn-primary" onclick="handleOpenAddExpense()">
+                  + Record Expense
+                </button>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        let html = '';
+        expenses.forEach(e => {
+          const catInfo = EXPENSE_CATEGORIES[e.category] || { label: e.category || 'Other', color: '#4b5563' };
+          html += `
+            <tr>
+              <td><strong>${formatDateKE(e.date)}</strong></td>
+              <td>
+                <span style="display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 600; background: var(--bg-surface-tint); color: ${catInfo.color}; border: 1px solid var(--border-main);">
+                  ${escapeHTML(catInfo.label)}
+                </span>
+              </td>
+              <td>
+                <div style="font-weight: 600;">${escapeHTML(e.title)}</div>
+                ${e.paidTo ? `<div class="small-meta">Paid To: ${escapeHTML(e.paidTo)}</div>` : ''}
+              </td>
+              <td class="tabular-nums">${escapeHTML(e.receiptRef || '-')}</td>
+              <td class="small-meta" style="max-width: 220px; white-space: normal;">${escapeHTML(e.notes || '-')}</td>
+              <td style="text-align: right; font-weight: 700; color: #b91c1c;" class="tabular-nums">
+                - ${formatKES(e.amount)}
+              </td>
+              <td style="text-align: right;">
+                <div style="display: inline-flex; gap: 0.25rem;">
+                  <button class="btn btn-sm btn-secondary edit-expense-btn" data-expense-id="${e.id}" title="Edit expense">
+                    ✏️
+                  </button>
+                  <button class="btn btn-sm btn-secondary delete-expense-btn" data-expense-id="${e.id}" title="Delete expense" style="color: var(--alert-owing);">
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        });
+
+        tbody.innerHTML = html;
+        attachExpenseEventListeners();
+      }
+
+      function attachExpenseEventListeners() {
+        document.querySelectorAll('.edit-expense-btn').forEach(btn => {
+          btn.addEventListener('click', () => handleOpenEditExpense(btn.dataset.expenseId));
+        });
+
+        document.querySelectorAll('.delete-expense-btn').forEach(btn => {
+          btn.addEventListener('click', () => handleDeleteExpense(btn.dataset.expenseId));
+        });
+      }
+
+      function handleOpenAddExpense() {
+        document.getElementById('expenseModalTitle').textContent = 'Record Property Expense';
+        document.getElementById('expenseEditId').value = '';
+        document.getElementById('inputExpenseTitle').value = '';
+        document.getElementById('selectExpenseCategory').value = 'repairs';
+        document.getElementById('inputExpenseMonth').value = activeMonth;
+        document.getElementById('inputExpenseDate').value = new Date().toISOString().substring(0, 10);
+        document.getElementById('inputExpenseAmount').value = '';
+        document.getElementById('inputExpensePayee').value = '';
+        document.getElementById('inputExpenseRef').value = '';
+        document.getElementById('inputExpenseNotes').value = '';
+        clearErrors('expenseModal');
+        openModal('expenseModal');
+      }
+
+      function handleOpenEditExpense(id) {
+        const exp = (appState.expenses || []).find(e => e.id === id);
+        if (!exp) return;
+
+        document.getElementById('expenseModalTitle').textContent = 'Edit Property Expense';
+        document.getElementById('expenseEditId').value = exp.id;
+        document.getElementById('inputExpenseTitle').value = exp.title || '';
+        document.getElementById('selectExpenseCategory').value = exp.category || 'other';
+        document.getElementById('inputExpenseMonth').value = exp.month || activeMonth;
+        document.getElementById('inputExpenseDate').value = exp.date || new Date().toISOString().substring(0, 10);
+        document.getElementById('inputExpenseAmount').value = exp.amount || '';
+        document.getElementById('inputExpensePayee').value = exp.paidTo || '';
+        document.getElementById('inputExpenseRef').value = exp.receiptRef || '';
+        document.getElementById('inputExpenseNotes').value = exp.notes || '';
+        clearErrors('expenseModal');
+        openModal('expenseModal');
+      }
+
+      function handleSaveExpense(e) {
+        e.preventDefault();
+        clearErrors('expenseModal');
+
+        const editId = document.getElementById('expenseEditId').value;
+        const title = document.getElementById('inputExpenseTitle').value.trim();
+        const category = document.getElementById('selectExpenseCategory').value;
+        const month = document.getElementById('inputExpenseMonth').value;
+        const date = document.getElementById('inputExpenseDate').value;
+        const amount = Number(document.getElementById('inputExpenseAmount').value);
+        const paidTo = document.getElementById('inputExpensePayee').value.trim();
+        const receiptRef = document.getElementById('inputExpenseRef').value.trim();
+        const notes = document.getElementById('inputExpenseNotes').value.trim();
+
+        let hasError = false;
+        if (!title) { showFieldError('groupExpenseTitle'); hasError = true; }
+        if (!amount || amount <= 0) { showFieldError('groupExpenseAmount'); hasError = true; }
+        if (!month) { showFieldError('groupExpenseMonth'); hasError = true; }
+        if (!date) { showFieldError('groupExpenseDate'); hasError = true; }
+
+        if (hasError) return;
+
+        if (!Array.isArray(appState.expenses)) appState.expenses = [];
+
+        if (editId) {
+          const idx = appState.expenses.findIndex(x => x.id === editId);
+          if (idx !== -1) {
+            appState.expenses[idx] = {
+              ...appState.expenses[idx],
+              title,
+              category,
+              month,
+              date,
+              amount,
+              paidTo,
+              receiptRef,
+              notes
+            };
+            showToast('Expense updated successfully.');
+          }
+        } else {
+          const newExp = {
+            id: generateId('exp_'),
+            title,
+            category,
+            month,
+            date,
+            amount,
+            paidTo,
+            receiptRef,
+            notes,
+            createdAt: new Date().toISOString()
+          };
+          appState.expenses.push(newExp);
+          showToast('Property expense recorded successfully.');
+        }
+
+        saveState();
+        closeModal('expenseModal');
+        renderAll();
+      }
+
+      function handleDeleteExpense(id) {
+        const exp = (appState.expenses || []).find(e => e.id === id);
+        if (!exp) return;
+
+        showConfirm(
+          'Delete Expense?',
+          `Are you sure you want to delete the expense "${exp.title}" of ${formatKES(exp.amount)}? This action cannot be undone.`,
+          () => {
+            appState.expenses = appState.expenses.filter(e => e.id !== id);
+            saveState();
+            renderAll();
+            showToast('Expense deleted.');
+          }
+        );
+      }
+
+      function exportExpensesCsv() {
+        let csv = 'Date,Month,Category,Expense Title,Paid To,Receipt / M-Pesa Ref,Amount (KES),Notes\r\n';
+        const expenses = [...(appState.expenses || [])];
+        expenses.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        expenses.forEach(e => {
+          const catInfo = EXPENSE_CATEGORIES[e.category] || { label: e.category };
+          const row = [
+            e.date || '',
+            e.month || '',
+            `"${(catInfo.label || e.category || '').replace(/"/g, '""')}"`,
+            `"${(e.title || '').replace(/"/g, '""')}"`,
+            `"${(e.paidTo || '').replace(/"/g, '""')}"`,
+            `"${(e.receiptRef || '').replace(/"/g, '""')}"`,
+            e.amount || 0,
+            `"${(e.notes || '').replace(/"/g, '""')}"`
+          ];
+          csv += row.join(',') + '\r\n';
+        });
+
+        downloadCsv(csv, `RentBook_Expenses_${activeMonth}.csv`);
+        showToast('Expenses ledger CSV exported.');
+      }
+
+      function handleOpenPnlReport(targetMonth = '') {
+        const m = targetMonth || activeMonth;
+        const monthInput = document.getElementById('pnlModalMonthSelect');
+        if (monthInput) monthInput.value = m;
+        renderPrintablePnlReport();
+        openModal('pnlModal');
+      }
+
+      function renderPrintablePnlReport() {
+        const monthInput = document.getElementById('pnlModalMonthSelect');
+        const month = monthInput ? monthInput.value || activeMonth : activeMonth;
+        const prop = appState.property || {};
+        const container = document.getElementById('pnlPreviewContainer');
+
+        const payments = appState.payments
+          .filter(p => p.date && p.date.substring(0, 7) === month)
+          .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        const totalIncome = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+        const expenses = (appState.expenses || [])
+          .filter(e => (e.month === month || (e.date && e.date.substring(0, 7) === month)))
+          .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+        const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        const netCashFlow = totalIncome - totalExpenses;
+        const profitMargin = totalIncome > 0 ? Math.round((netCashFlow / totalIncome) * 100) : 0;
+        const oer = totalIncome > 0 ? Math.round((totalExpenses / totalIncome) * 100) : 0;
+
+        // Group expenses by category
+        const catTotals = {};
+        expenses.forEach(e => {
+          const cat = e.category || 'other';
+          catTotals[cat] = (catTotals[cat] || 0) + (Number(e.amount) || 0);
+        });
+
+        let incomeRows = '';
+        if (payments.length === 0) {
+          incomeRows = `<tr><td colspan="5" style="text-align: center; color: #6b7280; font-style: italic; padding: 0.5rem;">No rental collections recorded for ${formatMonthName(month)}.</td></tr>`;
+        } else {
+          payments.forEach(p => {
+            const unit = appState.units.find(u => u.id === p.unitId) || { name: 'Unknown', tenantName: 'N/A' };
+            incomeRows += `
+              <tr>
+                <td style="padding: 0.35rem 0.5rem; border-bottom: 1px solid #e5e7eb;">${formatDateKE(p.date)}</td>
+                <td style="padding: 0.35rem 0.5rem; border-bottom: 1px solid #e5e7eb; font-weight: 600;">${escapeHTML(unit.name)}</td>
+                <td style="padding: 0.35rem 0.5rem; border-bottom: 1px solid #e5e7eb;">${escapeHTML(unit.tenantName || 'N/A')}</td>
+                <td style="padding: 0.35rem 0.5rem; border-bottom: 1px solid #e5e7eb; font-family: monospace;">${escapeHTML(p.mpesaCode || 'Cash')}</td>
+                <td style="padding: 0.35rem 0.5rem; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; font-family: monospace; color: #047857;">KES ${(Number(p.amount) || 0).toLocaleString('en-KE')}</td>
+              </tr>
+            `;
+          });
+        }
+
+        let expenseCatRows = '';
+        if (expenses.length === 0) {
+          expenseCatRows = `<tr><td colspan="3" style="text-align: center; color: #6b7280; font-style: italic; padding: 0.5rem;">No operating expenses recorded for ${formatMonthName(month)}.</td></tr>`;
+        } else {
+          Object.keys(EXPENSE_CATEGORIES).forEach(catKey => {
+            const amt = catTotals[catKey] || 0;
+            if (amt > 0) {
+              const catInfo = EXPENSE_CATEGORIES[catKey];
+              const pct = totalExpenses > 0 ? Math.round((amt / totalExpenses) * 100) : 0;
+              expenseCatRows += `
+                <tr>
+                  <td style="padding: 0.35rem 0.5rem; border-bottom: 1px solid #e5e7eb; font-weight: 600;">${escapeHTML(catInfo.label)}</td>
+                  <td style="padding: 0.35rem 0.5rem; border-bottom: 1px solid #e5e7eb; text-align: center; font-family: monospace;">${pct}%</td>
+                  <td style="padding: 0.35rem 0.5rem; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; font-family: monospace; color: #b91c1c;">(KES ${amt.toLocaleString('en-KE')})</td>
+                </tr>
+              `;
+            }
+          });
+        }
+
+        container.innerHTML = `
+          <div style="background: #ffffff; color: #111827; padding: 2rem; border-radius: var(--radius-md); border: 2px solid #16382c; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; font-size: 0.9rem;">
+            <!-- Document Letterhead -->
+            <div style="text-align: center; border-bottom: 2px solid #16382c; padding-bottom: 1rem; margin-bottom: 1.25rem;">
+              <div style="font-size: 1.8rem; margin-bottom: 0.25rem;">🇰🇪</div>
+              <div style="font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: #53645b; font-weight: 700;">Republic of Kenya &bull; Landlord Financial Accounting</div>
+              <h2 style="margin: 0.35rem 0; font-size: 1.35rem; color: #16382c; text-transform: uppercase; letter-spacing: 0.04em;">Monthly Income &amp; Expense Statement (Profit &amp; Loss)</h2>
+              <div style="font-size: 0.85rem; font-weight: 700; color: #16382c;">PERIOD: ${formatMonthName(month).toUpperCase()}</div>
+            </div>
+
+            <!-- Property Meta -->
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; font-size: 0.825rem; margin-bottom: 1.25rem; background: #f9fafb; padding: 0.65rem 0.85rem; border-radius: 4px; border: 1px solid #e5e7eb;">
+              <div><strong>PROPERTY:</strong> ${escapeHTML(prop.name || 'Rental Premises')}</div>
+              <div><strong>LANDLORD / AGENT:</strong> ${escapeHTML(prop.landlordName || 'N/A')}</div>
+              <div><strong>DATE PRINTED:</strong> ${formatDateKE(new Date().toISOString().substring(0, 10))}</div>
+            </div>
+
+            <!-- SECTION 1: INFLOWS -->
+            <div style="margin-bottom: 1.25rem;">
+              <div style="font-weight: 700; color: #16382c; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.35rem; letter-spacing: 0.04em;">
+                1. Gross Rental Collections (Cash Inflows)
+              </div>
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.825rem; border: 1px solid #e5e7eb; margin-bottom: 0.5rem;">
+                <thead>
+                  <tr style="background: #16382c; color: #ffffff; text-align: left;">
+                    <th style="padding: 0.4rem 0.5rem;">Date</th>
+                    <th style="padding: 0.4rem 0.5rem;">Unit</th>
+                    <th style="padding: 0.4rem 0.5rem;">Tenant</th>
+                    <th style="padding: 0.4rem 0.5rem;">Ref / Channel</th>
+                    <th style="padding: 0.4rem 0.5rem; text-align: right;">Amount (KES)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${incomeRows}
+                  <tr style="background: #f0fdf4; font-weight: 700;">
+                    <td colspan="4" style="padding: 0.45rem 0.5rem; border-top: 2px solid #16382c;">TOTAL GROSS COLLECTIONS (INFLOW)</td>
+                    <td style="padding: 0.45rem 0.5rem; text-align: right; border-top: 2px solid #16382c; font-family: monospace; color: #047857;">+ KES ${totalIncome.toLocaleString('en-KE')}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- SECTION 2: OUTFLOWS -->
+            <div style="margin-bottom: 1.25rem;">
+              <div style="font-weight: 700; color: #16382c; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.35rem; letter-spacing: 0.04em;">
+                2. Operating Property Expenses (Cash Outflows)
+              </div>
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.825rem; border: 1px solid #e5e7eb; margin-bottom: 0.5rem;">
+                <thead>
+                  <tr style="background: #374151; color: #ffffff; text-align: left;">
+                    <th style="padding: 0.4rem 0.5rem;">Expense Category</th>
+                    <th style="padding: 0.4rem 0.5rem; text-align: center; width: 90px;">% Share</th>
+                    <th style="padding: 0.4rem 0.5rem; text-align: right; width: 150px;">Amount (KES)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${expenseCatRows}
+                  <tr style="background: #fef2f2; font-weight: 700;">
+                    <td colspan="2" style="padding: 0.45rem 0.5rem; border-top: 2px solid #374151;">TOTAL OPERATING EXPENSES (OUTFLOW)</td>
+                    <td style="padding: 0.45rem 0.5rem; text-align: right; border-top: 2px solid #374151; font-family: monospace; color: #b91c1c;">- KES ${totalExpenses.toLocaleString('en-KE')}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- SECTION 3: NET OPERATING INCOME -->
+            <div style="margin-bottom: 1.5rem;">
+              <div style="font-weight: 700; color: #16382c; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.35rem; letter-spacing: 0.04em;">
+                3. Net Operating Cash Flow &amp; Profitability Summary
+              </div>
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; border: 2px solid #16382c;">
+                <tbody>
+                  <tr>
+                    <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; font-weight: 600;">Gross Rental Collections</td>
+                    <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 600; color: #047857;">+ KES ${totalIncome.toLocaleString('en-KE')}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; font-weight: 600;">Less: Total Property Operating Expenses</td>
+                    <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 600; color: #b91c1c;">- KES ${totalExpenses.toLocaleString('en-KE')}</td>
+                  </tr>
+                  <tr style="background: ${netCashFlow >= 0 ? '#ecfdf5' : '#fef2f2'};">
+                    <td style="padding: 0.75rem; font-weight: 800; font-size: 1.05rem; text-transform: uppercase; color: ${netCashFlow >= 0 ? '#047857' : '#b91c1c'};">
+                      NET OPERATING CASH FLOW (LANDLORD PROFIT)
+                    </td>
+                    <td style="padding: 0.75rem; text-align: right; font-weight: 800; font-size: 1.25rem; font-family: monospace; color: ${netCashFlow >= 0 ? '#047857' : '#b91c1c'};">
+                      ${netCashFlow < 0 ? '-' : ''}KES ${Math.abs(netCashFlow).toLocaleString('en-KE')}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="2" style="padding: 0.5rem 0.75rem; font-size: 0.8rem; color: #53645b; background: #f9fafb;">
+                      Operating Expense Ratio (OER): <strong>${oer}%</strong> &bull; Net Profit Margin: <strong>${profitMargin}%</strong>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Certification & Signatures -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; padding-top: 0.5rem;">
+              <div>
+                <div style="border-bottom: 1px solid #000000; height: 35px; margin-bottom: 0.25rem;"></div>
+                <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Landlord / Managing Director</div>
+                <div style="font-size: 0.75rem; color: #53645b;">Name: ${escapeHTML(prop.landlordName || 'N/A')} &bull; Date: ${formatDateKE(new Date().toISOString().substring(0, 10))}</div>
+              </div>
+              <div>
+                <div style="border-bottom: 1px solid #000000; height: 35px; margin-bottom: 0.25rem;"></div>
+                <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Caretaker / Property Accountant</div>
+                <div style="font-size: 0.75rem; color: #53645b;">Inspection &amp; Reconciliation Sign-off</div>
+              </div>
+            </div>
+          </div>
+        `;
       }
 
       // --- LATE RENT PENALTY & GRACE PERIOD ENGINE ---
@@ -7521,6 +8250,76 @@
                 meterBox.style.display = 'none';
               }
             }
+          });
+        }
+
+        // Landlord Expense Tracker & P&L Listeners
+        const openAddExpBtn = document.getElementById('openAddExpenseModalBtn');
+        if (openAddExpBtn) {
+          openAddExpBtn.addEventListener('click', handleOpenAddExpense);
+        }
+
+        const dashAddExpBtn = document.getElementById('dashAddExpenseBtn');
+        if (dashAddExpBtn) {
+          dashAddExpBtn.addEventListener('click', handleOpenAddExpense);
+        }
+
+        const expenseForm = document.getElementById('expenseForm');
+        if (expenseForm) {
+          expenseForm.addEventListener('submit', handleSaveExpense);
+        }
+
+        const openPnlBtn = document.getElementById('openPnlReportBtn');
+        if (openPnlBtn) {
+          openPnlBtn.addEventListener('click', () => handleOpenPnlReport());
+        }
+
+        const settingsPnlBtn = document.getElementById('settingsPnlBtn');
+        if (settingsPnlBtn) {
+          settingsPnlBtn.addEventListener('click', () => handleOpenPnlReport());
+        }
+
+        const printPnlBtn = document.getElementById('printPnlActionBtn');
+        if (printPnlBtn) {
+          printPnlBtn.addEventListener('click', () => window.print());
+        }
+
+        const pnlMonthSelect = document.getElementById('pnlModalMonthSelect');
+        if (pnlMonthSelect) {
+          pnlMonthSelect.addEventListener('change', renderPrintablePnlReport);
+        }
+
+        const exportExpCsvBtn = document.getElementById('exportExpensesCsvBtn');
+        if (exportExpCsvBtn) {
+          exportExpCsvBtn.addEventListener('click', exportExpensesCsv);
+        }
+
+        const settingsExpCsvBtn = document.getElementById('settingsExportExpensesCsvBtn');
+        if (settingsExpCsvBtn) {
+          settingsExpCsvBtn.addEventListener('click', exportExpensesCsv);
+        }
+
+        const expCatFilter = document.getElementById('expenseCategoryFilter');
+        if (expCatFilter) {
+          expCatFilter.addEventListener('change', (e) => {
+            expenseCategoryFilter = e.target.value;
+            renderExpenses();
+          });
+        }
+
+        const expScopeFilter = document.getElementById('expenseScopeFilter');
+        if (expScopeFilter) {
+          expScopeFilter.addEventListener('change', (e) => {
+            expenseScopeFilter = e.target.value;
+            renderExpenses();
+          });
+        }
+
+        const expSearchInput = document.getElementById('expenseSearchInput');
+        if (expSearchInput) {
+          expSearchInput.addEventListener('input', (e) => {
+            expenseSearchQuery = e.target.value.trim();
+            renderExpenses();
           });
         }
 
