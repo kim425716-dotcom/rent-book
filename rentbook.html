@@ -2255,6 +2255,44 @@
 
             <hr style="border: 0; border-top: 1px solid var(--border-subtle); margin: 0.25rem 0;">
 
+            <hr style="border: 0; border-top: 1px solid var(--border-subtle); margin: 0.25rem 0;">
+
+            <!-- Caretaker / Staff Restricted Mode Configuration -->
+            <div style="background: var(--bg-surface-alt); border: 1px solid var(--border-main); border-radius: var(--radius-sm); padding: 0.85rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; flex-wrap: wrap; gap: 0.5rem;">
+                <h4 style="margin: 0; color: #92400e; font-size: 0.95rem;">👷 Caretaker / Staff Restricted Mode</h4>
+                <div id="caretakerPinStatusBadge"></div>
+              </div>
+              <p class="small-meta" style="margin-bottom: 0.75rem;">Give on-site staff access to record water meter readings and tenant payments without seeing your net profit, expenses, or settings.</p>
+
+              <form id="caretakerPinSettingsForm" style="display: flex; flex-direction: column; gap: 0.65rem;">
+                <div class="form-group">
+                  <label for="settingCaretakerPin" id="settingCaretakerPinLabel">Set 4-Digit Caretaker PIN</label>
+                  <input type="password" id="settingCaretakerPin" class="form-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="e.g. 1234" autocomplete="off">
+                  <span class="field-hint">When entered on the lock screen, automatically opens Rent Book in Staff Mode.</span>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                  <button type="submit" class="btn btn-primary btn-sm" id="saveCaretakerPinBtn">
+                    🔒 Save Caretaker PIN
+                  </button>
+                  <button type="button" class="btn btn-danger btn-sm" id="disableCaretakerPinBtn" style="display: none;">
+                    🔓 Remove Staff PIN
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="enterCaretakerModeNowBtn" style="color: #92400e;">
+                    👷 Switch to Caretaker Mode Now
+                  </button>
+                </div>
+              </form>
+
+              <div style="margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px dashed var(--border-main); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <span class="small-meta">Direct Staff Link: <code>?mode=caretaker</code></span>
+                <button type="button" class="btn btn-secondary btn-sm" id="copyCaretakerLinkBtn" title="Copy shareable link for caretaker">
+                  📋 Copy Staff Link
+                </button>
+              </div>
+            </div>
+
             <!-- Auto-Lock Timeout -->
             <div class="form-group">
               <label for="settingAutoLockTimeout">Inactivity Auto-Lock Timer</label>
@@ -3714,6 +3752,10 @@
       let pinFailedAttempts = 0;
       let isClientMode = false;
       let verifiedClientUnitId = null;
+      let isCaretakerMode = false;
+      const CARETAKER_PIN_SALT_KEY = 'rentbook_caretaker_salt';
+      const CARETAKER_PIN_HASH_KEY = 'rentbook_caretaker_hash';
+      const CARETAKER_PIN_ENABLED_KEY = 'rentbook_caretaker_enabled';
       let pinLockoutUntil = 0;
       let lockoutInterval = null;
 
@@ -3984,6 +4026,109 @@
         }
       }
 
+      function isCaretakerPinSet() {
+        try {
+          return localStorage.getItem(CARETAKER_PIN_ENABLED_KEY) === 'true' &&
+                 Boolean(localStorage.getItem(CARETAKER_PIN_HASH_KEY));
+        } catch (e) {
+          return false;
+        }
+      }
+
+      async function verifyCaretakerPin(inputPin) {
+        try {
+          const salt = localStorage.getItem(CARETAKER_PIN_SALT_KEY) || '';
+          const hash = localStorage.getItem(CARETAKER_PIN_HASH_KEY) || '';
+          if (!salt || !hash) return false;
+          const computed = await hashPin(inputPin, salt);
+          return computed === hash;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      async function setCaretakerPin(pin) {
+        const saltArr = new Uint8Array(16);
+        if (window.crypto && window.crypto.getRandomValues) {
+          window.crypto.getRandomValues(saltArr);
+        } else {
+          for (let i = 0; i < 16; i++) saltArr[i] = Math.floor(Math.random() * 256);
+        }
+        const salt = Array.from(saltArr).map(b => b.toString(16).padStart(2, '0')).join('');
+        const hash = await hashPin(pin, salt);
+        localStorage.setItem(CARETAKER_PIN_SALT_KEY, salt);
+        localStorage.setItem(CARETAKER_PIN_HASH_KEY, hash);
+        localStorage.setItem(CARETAKER_PIN_ENABLED_KEY, 'true');
+      }
+
+      function removeCaretakerPin() {
+        try {
+          localStorage.removeItem(CARETAKER_PIN_SALT_KEY);
+          localStorage.removeItem(CARETAKER_PIN_HASH_KEY);
+          localStorage.removeItem(CARETAKER_PIN_ENABLED_KEY);
+        } catch (e) {}
+      }
+
+      function setCaretakerMode(active) {
+        isCaretakerMode = Boolean(active);
+
+        // Manage Top Caretaker Banner
+        let banner = document.getElementById('caretakerModeBanner');
+        if (isCaretakerMode) {
+          if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'caretakerModeBanner';
+            banner.style.cssText = 'background: #fef3c7; border-bottom: 2px solid #f59e0b; color: #92400e; padding: 0.5rem 1rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 600; position: sticky; top: 0; z-index: 9999;';
+            banner.innerHTML = `
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.15rem;">👷</span>
+                <span>Caretaker / Staff Mode Active &bull; Operational Access Only (Units, Meter Bills &amp; Payment Receipts)</span>
+              </div>
+              <button type="button" id="exitCaretakerBtn" style="background: #92400e; color: #fff; padding: 0.3rem 0.75rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 700;">
+                🔒 Landlord Login
+              </button>
+            `;
+            document.body.prepend(banner);
+            document.getElementById('exitCaretakerBtn').addEventListener('click', () => {
+              setCaretakerMode(false);
+              lockSession('manual');
+            });
+          }
+          banner.style.display = 'flex';
+        } else {
+          if (banner) banner.style.display = 'none';
+        }
+
+        // Restrict Tabs in Navigation: Caretakers only see Units, Payments, Bills, Tenant Pay
+        // Dashboard, Expenses, and Settings are completely hidden from Staff!
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+          const tabName = tab.dataset.tab;
+          if (isCaretakerMode) {
+            if (tabName === 'dashboard' || tabName === 'expenses' || tabName === 'settings') {
+              tab.style.display = 'none';
+            } else {
+              tab.style.display = 'inline-flex';
+            }
+          } else {
+            if (!isClientMode) tab.style.display = 'inline-flex';
+          }
+        });
+
+        // If currently on a forbidden tab, automatically switch to Units
+        if (isCaretakerMode) {
+          const activeTab = document.querySelector('.nav-tab.active');
+          if (activeTab && (activeTab.dataset.tab === 'dashboard' || activeTab.dataset.tab === 'expenses' || activeTab.dataset.tab === 'settings')) {
+            const unitsTab = document.querySelector('.nav-tab[data-tab="units"]');
+            if (unitsTab) unitsTab.click();
+          }
+        }
+
+        // Hide administrative delete buttons and reset options in Caretaker Mode
+        document.querySelectorAll('.delete-payment-btn, .delete-bill-btn, #deleteUnitBtn, #resetAllDataBtn, #exportJsonBackupBtn, .open-rent-review-btn').forEach(el => {
+          el.style.display = isCaretakerMode ? 'none' : '';
+        });
+      }
+
       async function hashPin(pin, salt) {
         try {
           if (window.crypto && window.crypto.subtle) {
@@ -4078,7 +4223,13 @@
               </button>
             </form>
 
-            <div style="margin-top:0.5rem;text-align:center;">
+            <div style="margin-top:0.65rem;text-align:center;display:flex;flex-direction:column;gap:0.4rem;">
+              <div id="lockCaretakerNotice" style="font-size:0.8rem;color:#fde68a;">
+                Staff member? Enter your Caretaker PIN above to log meter readings &amp; payments.
+              </div>
+              <button type="button" id="lockToCaretakerBtn" style="background:none;border:none;color:#fde68a;text-decoration:underline;cursor:pointer;font-size:0.85rem;display:none;">
+                👷 Access Caretaker / Staff Mode &rarr;
+              </button>
               <button type="button" id="lockToTenantPayBtn" style="background:none;border:none;color:#94d2bd;text-decoration:underline;cursor:pointer;font-size:0.875rem;">
                 Paying rent? Open Tenant Pay Portal &rarr;
               </button>
@@ -4146,12 +4297,30 @@
               return;
             }
 
+            // 1. Verify Master Landlord PIN
             const ok = await verifyPin(entered);
             if (ok) {
               pinFailedAttempts = 0;
+              setCaretakerMode(false);
               unlockSession();
-              showToast('Ledger unlocked.');
-            } else {
+              showToast('Landlord Ledger unlocked (Full Access).');
+              return;
+            }
+
+            // 2. Verify Caretaker PIN if configured
+            if (isCaretakerPinSet()) {
+              const isCaretaker = await verifyCaretakerPin(entered);
+              if (isCaretaker) {
+                pinFailedAttempts = 0;
+                unlockSession();
+                setCaretakerMode(true);
+                showToast('Unlocked in Caretaker / Staff Mode (Operational Access).');
+                return;
+              }
+            }
+
+            // 3. Neither matched -> failed attempt
+            if (true) {
               pinFailedAttempts++;
               if (pinFailedAttempts >= 5) {
                 pinLockoutUntil = Date.now() + 30000;
@@ -7656,6 +7825,27 @@
           }
         }
 
+        // Render Caretaker PIN Badge & Controls
+        const hasCaretakerPin = isCaretakerPinSet();
+        const caretakerBadge = document.getElementById('caretakerPinStatusBadge');
+        const disableCaretakerBtn = document.getElementById('disableCaretakerPinBtn');
+        const caretakerLabel = document.getElementById('settingCaretakerPinLabel');
+
+        if (caretakerBadge) {
+          if (hasCaretakerPin) {
+            caretakerBadge.innerHTML = '<span style="background:#d1fae5;color:#065f46;padding:0.2rem 0.55rem;border-radius:999px;font-size:0.75rem;font-weight:700;">🔒 STAFF PIN ACTIVE</span>';
+          } else {
+            caretakerBadge.innerHTML = '<span style="background:var(--bg-elevated);color:var(--text-muted);border:1px solid var(--border-main);padding:0.2rem 0.55rem;border-radius:999px;font-size:0.75rem;font-weight:600;">⚪ NO STAFF PIN (DIRECT LINK)</span>';
+          }
+        }
+
+        if (disableCaretakerBtn) {
+          disableCaretakerBtn.style.display = hasCaretakerPin ? 'inline-flex' : 'none';
+        }
+        if (caretakerLabel) {
+          caretakerLabel.textContent = hasCaretakerPin ? 'Change Caretaker PIN (Enter New 4 Digits)' : 'Set 4-Digit Caretaker PIN';
+        }
+
         if (currentGroup) {
           currentGroup.style.display = hasPin ? 'block' : 'none';
         }
@@ -9286,6 +9476,58 @@
           });
         }
 
+        // Caretaker / Staff Mode Listeners
+        const caretakerPinForm = document.getElementById('caretakerPinSettingsForm');
+        if (caretakerPinForm) {
+          caretakerPinForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const pinVal = (document.getElementById('settingCaretakerPin').value || '').trim();
+            if (!pinVal || pinVal.length < 4) {
+              showToast('Caretaker PIN must be at least 4 digits.', 'warning');
+              return;
+            }
+            await setCaretakerPin(pinVal);
+            document.getElementById('settingCaretakerPin').value = '';
+            renderSecuritySettings();
+            showToast('Caretaker / Staff PIN successfully saved!');
+          });
+        }
+
+        const disableCaretakerBtn = document.getElementById('disableCaretakerPinBtn');
+        if (disableCaretakerBtn) {
+          disableCaretakerBtn.addEventListener('click', () => {
+            showConfirm(
+              'Remove Caretaker PIN?',
+              'Are you sure you want to remove the Caretaker PIN? Staff will be able to access Caretaker Mode directly via link or button without a PIN.',
+              () => {
+                removeCaretakerPin();
+                renderSecuritySettings();
+                showToast('Caretaker PIN removed.');
+              }
+            );
+          });
+        }
+
+        const enterCaretakerBtn = document.getElementById('enterCaretakerModeNowBtn');
+        if (enterCaretakerBtn) {
+          enterCaretakerBtn.addEventListener('click', () => {
+            setCaretakerMode(true);
+            showToast('Switched to Caretaker Mode.');
+          });
+        }
+
+        const copyCaretakerLinkBtn = document.getElementById('copyCaretakerLinkBtn');
+        if (copyCaretakerLinkBtn) {
+          copyCaretakerLinkBtn.addEventListener('click', () => {
+            const currentUrl = window.location.origin + window.location.pathname + '?mode=caretaker';
+            navigator.clipboard.writeText(currentUrl).then(() => {
+              showToast('Caretaker direct link copied to clipboard!');
+            }).catch(() => {
+              showToast('Could not copy link automatically.', 'warning');
+            });
+          });
+        }
+
         // Formal 90-Day Rent Review Notice Listeners
         const openRentReviewBtn = document.getElementById('openRentReviewModalBtn');
         if (openRentReviewBtn) {
@@ -10312,6 +10554,12 @@
       function checkUrlParameters() {
         try {
           const urlParams = new URLSearchParams(window.location.search);
+          const modeParam = urlParams.get('mode') || urlParams.get('role');
+          if (modeParam === 'caretaker' || modeParam === 'staff') {
+            setCaretakerMode(true);
+            showToast('Entered Caretaker / Staff Mode.');
+          }
+
           const unitParam = urlParams.get('unit') || urlParams.get('pay');
           if (unitParam) {
             // Sanitize the parameter (prevent injection via URL)
