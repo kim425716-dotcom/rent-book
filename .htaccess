@@ -1,3 +1,16 @@
+# PWA Assets Configuration
+<Files "manifest.webmanifest">
+    Require all granted
+</Files>
+<Files "sw.js">
+    Require all granted
+    Header set Service-Worker-Allowed "/"
+</Files>
+<FilesMatch "\.(png|ico)$">
+    Require all granted
+</FilesMatch>
+AddType application/manifest+json .webmanifest
+
 # ==============================================================================
 # Rent Book - Production Server Configuration & Security Hardening
 # Apache / LiteSpeed (cPanel)

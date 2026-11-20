@@ -10,6 +10,12 @@
   <meta http-equiv="X-Frame-Options" content="DENY">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Rent Book - Kenyan Landlord Property Manager</title>
+  <!-- PWA & Mobile Web App Meta Tags -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Rent Book">
   <style>
     /* ==========================================================================
        1. DESIGN SYSTEM & COLOR TOKENS
@@ -1548,6 +1554,9 @@
           <button class="btn btn-secondary" id="dashAddBillBtn">
             + Add Bill (Water/Power)
           </button>
+          <button class="btn btn-secondary" id="openMonthlyReportBtn" title="Generate Landlord Monthly Statement &amp; KRA MRI Tax">
+            📊 Owner's Report &amp; Tax
+          </button>
           <button class="btn btn-outline" id="dashOpenTenantPayBtn" style="color: var(--settled); border-color: var(--settled);">
             📱 Tenant Pay Portal
           </button>
@@ -1563,6 +1572,9 @@
           <h2>Tenants in Arrears</h2>
           <p class="small-meta">Ranked by highest amount owed for quick follow-up via WhatsApp</p>
         </div>
+        <button class="btn btn-sm btn-secondary" id="dashBulkRemindersBtn" style="color: #25d366; border-color: #25d366;">
+          📢 Bulk WhatsApp Reminders
+        </button>
       </div>
 
       <div id="topDebtorsContainer">
@@ -2617,6 +2629,94 @@
   </div>
 
   <!-- ========================================================================
+       MODAL 8: OWNER'S MONTHLY REPORT & KRA MRI TAX STATEMENT
+       ======================================================================== -->
+  <div class="modal-backdrop" id="monthlyReportModal" role="dialog" aria-modal="true" aria-labelledby="monthlyReportModalTitle">
+    <div class="modal-dialog" style="max-width: 900px; width: 96%;">
+      <div class="modal-header">
+        <div>
+          <h3 id="monthlyReportModalTitle">📊 Property Performance &amp; KRA Tax Statement</h3>
+          <p class="small-meta">Monthly landlord accounting statement and Kenya Revenue Authority (KRA) MRI tax calculation</p>
+        </div>
+        <button class="modal-close-btn" data-close-modal="monthlyReportModal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+        <!-- Controls (no-print) -->
+        <div class="no-print" style="background: var(--bg-surface-alt); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+            <div class="form-group">
+              <label for="reportMonthSelect">Report Month</label>
+              <input type="month" id="reportMonthSelect" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="reportKraPinInput">Landlord KRA PIN (Optional)</label>
+              <input type="text" id="reportKraPinInput" class="form-input" placeholder="e.g. A012345678Z" maxlength="11">
+            </div>
+            <div class="form-group">
+              <label for="reportTaxRateSelect">KRA MRI Tax Rate</label>
+              <select id="reportTaxRateSelect" class="form-select">
+                <option value="0.075" selected>7.5% (Finance Act 2023 - Current)</option>
+                <option value="0.10">10% (Pre-2024 Legacy Rate)</option>
+                <option value="0">0% (Exempt / Commercial)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Printable Owner's Report Sheet -->
+        <div class="statement-sheet printable-area" id="printableReportArea">
+          <!-- Filled by JavaScript -->
+        </div>
+      </div>
+
+      <div class="modal-footer no-print" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <button type="button" class="btn btn-secondary" data-close-modal="monthlyReportModal">Close</button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" id="copyReportSummaryBtn">
+            📋 Copy Summary
+          </button>
+          <button type="button" class="btn btn-primary" id="printReportBtn">
+            🖨️ Print / Save as PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 9: BULK WHATSAPP REMINDERS
+       ======================================================================== -->
+  <div class="modal-backdrop" id="bulkRemindersModal" role="dialog" aria-modal="true" aria-labelledby="bulkRemindersModalTitle">
+    <div class="modal-dialog" style="max-width: 720px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3 id="bulkRemindersModalTitle">📢 Bulk Rent Reminders via WhatsApp</h3>
+          <p class="small-meta">Send individualized payment reminder links to all tenants currently in arrears</p>
+        </div>
+        <button class="modal-close-btn" data-close-modal="bulkRemindersModal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+        <div style="background: var(--bg-surface-tint); padding: 0.85rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: 0.875rem;">
+          💡 Each tenant receives an individualized reminder with their exact balance and their private self-service portal link. Tap each WhatsApp button to message them directly.
+        </div>
+
+        <div id="bulkRemindersList" style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <!-- Filled via JS -->
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn btn-secondary" data-close-modal="bulkRemindersModal">Close</button>
+        <button type="button" class="btn btn-secondary" id="copyAllBulkMessagesBtn">
+          📋 Copy All Messages Text
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
        MODAL 7: HOW THIS WORKS EXPLAINER
        ======================================================================== -->
   <div class="modal-backdrop" id="howItWorksModal" role="dialog" aria-modal="true" aria-labelledby="howItWorksModalTitle">
@@ -3370,6 +3470,246 @@
         } else {
           onboardingCard.style.display = 'none';
         }
+      }
+
+      // --- OWNER'S MONTHLY REPORT & KRA MRI TAX CALCULATOR ---
+      function handleOpenMonthlyReport() {
+        const monthInput = document.getElementById('reportMonthSelect');
+        if (monthInput) monthInput.value = activeMonth;
+        renderMonthlyReport();
+        openModal('monthlyReportModal');
+      }
+
+      function renderMonthlyReport() {
+        const monthVal = document.getElementById('reportMonthSelect').value || activeMonth;
+        const kraPin = (document.getElementById('reportKraPinInput').value || '').trim().toUpperCase();
+        const taxRate = Number(document.getElementById('reportTaxRateSelect').value) || 0.075;
+        const prop = appState.property || {};
+        const metrics = getAggregateMetrics(monthVal);
+
+        // KRA MRI Tax: 7.5% on gross rent collected
+        const grossRentCollected = metrics.monthCollected;
+        const kraMriTax = Math.round(grossRentCollected * taxRate);
+        const netAfterTax = grossRentCollected - kraMriTax;
+
+        let unitRowsHtml = '';
+        appState.units.forEach(u => {
+          const fin = calculateUnitFinancials(u, monthVal);
+          const statusText = u.isVacant ? 'Vacant' : fin.closingBalance <= 0 ? 'Settled' : 'Owing';
+          const statusColor = u.isVacant ? '#6b7280' : fin.closingBalance <= 0 ? 'var(--settled)' : 'var(--alert-owing)';
+
+          unitRowsHtml += `
+            <tr>
+              <td><strong>${escapeHTML(u.name)}</strong></td>
+              <td>${escapeHTML(u.tenantName || (u.isVacant ? 'Vacant' : 'N/A'))}</td>
+              <td class="tabular-nums">${formatKES(fin.monthRentCharged)}</td>
+              <td class="tabular-nums">${formatKES(fin.monthBillsCharged)}</td>
+              <td class="tabular-nums" style="color: var(--settled); font-weight: 600;">${formatKES(fin.monthPaymentsMade)}</td>
+              <td class="tabular-nums" style="color: ${statusColor}; font-weight: 700;">${formatKES(fin.closingBalance)}</td>
+              <td><span style="color: ${statusColor}; font-weight: 600; font-size: 0.8125rem;">${statusText}</span></td>
+            </tr>
+          `;
+        });
+
+        const html = `
+          <div class="receipt-header" style="text-align: center; border-bottom: 2px solid #111827; padding-bottom: 1rem; margin-bottom: 1.25rem;">
+            <div style="font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.05em; color: #4b5563;">Property Owner Financial Statement</div>
+            <h2 style="margin: 0.25rem 0; font-size: 1.5rem; color: #111827;">${escapeHTML(prop.name || 'Rent Book')}</h2>
+            <div style="font-size: 0.9rem; color: #1f2937;">
+              <strong>Landlord / Agent:</strong> ${escapeHTML(prop.landlordName || 'Owner')} &bull; <strong>Phone:</strong> ${escapeHTML(prop.phone || 'N/A')}
+              ${kraPin ? ` &bull; <strong>KRA PIN:</strong> ${escapeHTML(kraPin)}` : ''}
+            </div>
+            <div style="font-size: 0.875rem; font-weight: 700; color: #16382c; margin-top: 0.35rem;">
+              STATEMENT PERIOD: ${formatMonthName(monthVal).toUpperCase()}
+            </div>
+          </div>
+
+          <!-- Summary Metric Cards Grid -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem;">
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.75rem; border-radius: 6px;">
+              <div style="font-size: 0.75rem; color: #6b7280; text-transform: uppercase;">Occupancy</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #111827;">${metrics.occupancyRate}%</div>
+              <div style="font-size: 0.75rem; color: #4b5563;">${metrics.occupiedUnits} of ${metrics.totalUnits} Units Occupied</div>
+            </div>
+
+            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 0.75rem; border-radius: 6px;">
+              <div style="font-size: 0.75rem; color: #065f46; text-transform: uppercase;">Total Collected</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #047857;" class="tabular-nums">${formatKES(grossRentCollected)}</div>
+              <div style="font-size: 0.75rem; color: #065f46;">Via M-Pesa &amp; Cash</div>
+            </div>
+
+            <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 0.75rem; border-radius: 6px;">
+              <div style="font-size: 0.75rem; color: #991b1b; text-transform: uppercase;">Total Arrears Owed</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #dc2626;" class="tabular-nums">${formatKES(metrics.totalOwing)}</div>
+              <div style="font-size: 0.75rem; color: #991b1b;">Across ${metrics.owingUnitsCount} Units</div>
+            </div>
+
+            <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 0.75rem; border-radius: 6px;">
+              <div style="font-size: 0.75rem; color: #92400e; text-transform: uppercase;">KRA MRI Tax (7.5%)</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #b45309;" class="tabular-nums">${formatKES(kraMriTax)}</div>
+              <div style="font-size: 0.75rem; color: #92400e;">Due by 20th on iTax</div>
+            </div>
+          </div>
+
+          <!-- KRA Tax Schedule Box -->
+          <div style="background: #fff8eb; border-left: 4px solid #f59e0b; padding: 0.85rem 1rem; border-radius: 4px; margin-bottom: 1.25rem; font-size: 0.875rem;">
+            <strong>🇰🇪 Kenya Revenue Authority (KRA) Monthly Rental Income (MRI) Tax Schedule:</strong>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; margin-top: 0.35rem;">
+              <div>Taxable Gross Rent Collected: <strong class="tabular-nums">${formatKES(grossRentCollected)}</strong></div>
+              <div>MRI Statutory Rate: <strong>${taxRate * 100}% (Finance Act 2023)</strong></div>
+              <div>Estimated MRI Tax Payable: <strong class="tabular-nums" style="color: #b45309;">${formatKES(kraMriTax)}</strong></div>
+              <div>Net Income After MRI Tax: <strong class="tabular-nums" style="color: #047857;">${formatKES(netAfterTax)}</strong></div>
+            </div>
+          </div>
+
+          <!-- Unit Ledger Breakdown Table -->
+          <h4 style="margin: 0.75rem 0 0.5rem 0; font-size: 0.95rem; text-transform: uppercase; color: #111827;">Unit Performance &amp; Arrears Schedule</h4>
+          <table class="receipt-table" style="font-size: 0.8125rem;">
+            <thead>
+              <tr>
+                <th>Unit</th>
+                <th>Tenant</th>
+                <th style="text-align: right;">Rent (KES)</th>
+                <th style="text-align: right;">Bills (KES)</th>
+                <th style="text-align: right;">Paid (KES)</th>
+                <th style="text-align: right;">Closing (KES)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${unitRowsHtml}
+            </tbody>
+          </table>
+
+          <!-- Declaration & Signatures -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid #d1d5db; font-size: 0.85rem; page-break-inside: avoid;">
+            <div>
+              <strong>Landlord / Property Manager Certification:</strong><br>
+              I certify that this statement reflects the true and complete records of rental income for the stated period.<br><br>
+              Signature: _________________________________<br>
+              Date: _____________________________________
+            </div>
+            <div style="text-align: right;">
+              <strong>System Generated by Rent Book</strong><br>
+              Kenya Rental Property Management System<br>
+              Date Generated: ${formatDateKE(new Date().toISOString().split('T')[0])}
+            </div>
+          </div>
+        `;
+
+        document.getElementById('printableReportArea').innerHTML = html;
+      }
+
+      function handleCopyReportSummary() {
+        const monthVal = document.getElementById('reportMonthSelect').value || activeMonth;
+        const prop = appState.property || {};
+        const metrics = getAggregateMetrics(monthVal);
+        const taxRate = Number(document.getElementById('reportTaxRateSelect').value) || 0.075;
+        const kraMriTax = Math.round(metrics.monthCollected * taxRate);
+
+        const summaryText = `*PROPERTY PERFORMANCE & KRA TAX SUMMARY*\n` +
+          `Property: ${prop.name || 'Rent Book'}\n` +
+          `Landlord: ${prop.landlordName || 'Owner'} (${prop.phone || ''})\n` +
+          `Period: ${formatMonthName(monthVal)}\n` +
+          `Occupancy: ${metrics.occupancyRate}% (${metrics.occupiedUnits}/${metrics.totalUnits} units)\n` +
+          `Gross Rent Collected: ${formatKES(metrics.monthCollected)}\n` +
+          `Total Arrears Owed: ${formatKES(metrics.totalOwing)} (${metrics.owingUnitsCount} units)\n` +
+          `Estimated KRA MRI Tax (7.5%): ${formatKES(kraMriTax)}\n` +
+          `Net Income After Tax: ${formatKES(metrics.monthCollected - kraMriTax)}\n\n` +
+          `Generated via Rent Book Kenya.`;
+
+        navigator.clipboard.writeText(summaryText).then(() => {
+          showToast('Summary copied to clipboard!');
+        }).catch(() => {
+          showToast('Could not copy automatically.', 'warning');
+        });
+      }
+
+      // --- BULK WHATSAPP REMINDERS GENERATOR ---
+      function handleOpenBulkReminders() {
+        const container = document.getElementById('bulkRemindersList');
+        if (!container) return;
+
+        const debtors = [];
+        appState.units.forEach(unit => {
+          if (!unit.isVacant) {
+            const fin = calculateUnitFinancials(unit, activeMonth);
+            if (fin.closingBalance > 0) {
+              debtors.push({ unit, fin });
+            }
+          }
+        });
+
+        debtors.sort((a, b) => b.fin.closingBalance - a.fin.closingBalance);
+
+        if (debtors.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state" style="padding: 1.5rem;">
+              <div class="empty-icon" style="color: var(--settled);">✓</div>
+              <h3>No Arrears!</h3>
+              <p>All occupied units have settled their balances for ${formatMonthName(activeMonth)}.</p>
+            </div>
+          `;
+          openModal('bulkRemindersModal');
+          return;
+        }
+
+        let html = '';
+        debtors.forEach(item => {
+          const u = item.unit;
+          const fin = item.fin;
+          const msg = generateReminderMessage(u, 'swahili');
+          const cleanPhone = (u.tenantPhone || '').replace(/[^0-9]/g, '');
+          let waPhone = cleanPhone;
+          if (waPhone.startsWith('0') && waPhone.length === 10) waPhone = '254' + waPhone.substring(1);
+          const waUrl = waPhone ? `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+
+          html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface-alt); border: 1px solid var(--border-main); padding: 0.85rem 1rem; border-radius: var(--radius-sm); flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <strong>Unit ${escapeHTML(u.name)}</strong> &bull; ${escapeHTML(u.tenantName || 'Tenant')}
+                <div class="small-meta">Phone: ${escapeHTML(u.tenantPhone || 'No phone recorded')}</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <span class="tabular-nums" style="font-weight: 700; color: var(--alert-owing);">${formatKES(fin.closingBalance)}</span>
+                <a href="${waUrl}" target="_blank" class="btn btn-sm" style="background: #25d366; color: #fff; text-decoration: none; padding: 0.35rem 0.65rem; font-size: 0.8125rem;">
+                  💬 WhatsApp
+                </a>
+              </div>
+            </div>
+          `;
+        });
+
+        container.innerHTML = html;
+        openModal('bulkRemindersModal');
+      }
+
+      function handleCopyAllBulkMessages() {
+        const debtors = [];
+        appState.units.forEach(unit => {
+          if (!unit.isVacant) {
+            const fin = calculateUnitFinancials(unit, activeMonth);
+            if (fin.closingBalance > 0) debtors.push({ unit, fin });
+          }
+        });
+
+        if (debtors.length === 0) {
+          showToast('No arrears to copy.', 'warning');
+          return;
+        }
+
+        let fullText = `*RENT BOOK ARREARS BROADCAST (${formatMonthName(activeMonth).toUpperCase()})*\n\n`;
+        debtors.forEach(item => {
+          const u = item.unit;
+          const msg = generateReminderMessage(u, 'sms');
+          fullText += `${msg}\n-------------------------------\n`;
+        });
+
+        navigator.clipboard.writeText(fullText).then(() => {
+          showToast('All messages copied to clipboard!');
+        }).catch(() => {
+          showToast('Could not copy automatically.', 'warning');
+        });
       }
 
       // --- RENDER VIEW 1: DASHBOARD ---
@@ -5892,6 +6232,41 @@
           });
         }
 
+        // Owner's Monthly Report & KRA MRI Tax Listeners
+        const openReportBtn = document.getElementById('openMonthlyReportBtn');
+        if (openReportBtn) {
+          openReportBtn.addEventListener('click', handleOpenMonthlyReport);
+        }
+
+        ['reportMonthSelect', 'reportKraPinInput', 'reportTaxRateSelect'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('input', renderMonthlyReport);
+            el.addEventListener('change', renderMonthlyReport);
+          }
+        });
+
+        const printRepBtn = document.getElementById('printReportBtn');
+        if (printRepBtn) {
+          printRepBtn.addEventListener('click', () => window.print());
+        }
+
+        const copyRepBtn = document.getElementById('copyReportSummaryBtn');
+        if (copyRepBtn) {
+          copyRepBtn.addEventListener('click', handleCopyReportSummary);
+        }
+
+        // Bulk WhatsApp Reminders Listeners
+        const bulkRemBtn = document.getElementById('dashBulkRemindersBtn');
+        if (bulkRemBtn) {
+          bulkRemBtn.addEventListener('click', handleOpenBulkReminders);
+        }
+
+        const copyBulkBtn = document.getElementById('copyAllBulkMessagesBtn');
+        if (copyBulkBtn) {
+          copyBulkBtn.addEventListener('click', handleCopyAllBulkMessages);
+        }
+
         // Quick Action triggers
         document.getElementById('dashRecordPaymentBtn').addEventListener('click', () => handleOpenAddPayment());
         document.getElementById('dashAddBillBtn').addEventListener('click', () => handleOpenAddBill());
@@ -6567,6 +6942,11 @@
         renderAll();
         checkUrlParameters();
         initInactivityLock();
+
+        // Register PWA Service Worker for offline capability
+        if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+          navigator.serviceWorker.register('sw.js').catch(e => console.log('SW registration note:', e));
+        }
 
         // If PIN is enabled and user is NOT accessing direct tenant payment link, lock immediately on startup
         try {
