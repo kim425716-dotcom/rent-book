@@ -1310,6 +1310,9 @@
       <button class="nav-tab" role="tab" aria-selected="false" data-tab="bills">
         💧 Bills &amp; Utilities
       </button>
+      <button class="nav-tab" role="tab" aria-selected="false" data-tab="tenant-pay" style="color: var(--settled); font-weight: 700;">
+        📱 Pay Rent (Tenant Portal)
+      </button>
       <button class="nav-tab" role="tab" aria-selected="false" data-tab="settings">
         ⚙️ Settings &amp; Backup
       </button>
@@ -1443,6 +1446,9 @@
           </button>
           <button class="btn btn-secondary" id="dashAddBillBtn">
             + Add Bill (Water/Power)
+          </button>
+          <button class="btn btn-outline" id="dashOpenTenantPayBtn" style="color: var(--settled); border-color: var(--settled);">
+            📱 Tenant Pay Portal
           </button>
           <button class="btn btn-outline" id="dashAddUnitBtn">
             + Add Unit
@@ -1606,6 +1612,224 @@
     </section>
 
     <!-- ======================================================================
+         VIEW 5: TENANT PAY PORTAL (PAY THROUGH M-PESA)
+         ====================================================================== -->
+    <section id="tab-tenant-pay" class="tab-pane" style="display: none;" role="tabpanel">
+      <div class="section-header">
+        <div>
+          <h2>📱 Tenant Payment Portal</h2>
+          <p class="small-meta">Pay rent &amp; utility bills directly through Safaricom M-Pesa</p>
+        </div>
+        <button class="btn btn-sm btn-secondary" id="tenantShareLinkBtn" title="Share direct link with tenant">
+          🔗 Copy Portal Link
+        </button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+        
+        <!-- Column 1: Unit Selection & Balance Breakdown -->
+        <div class="unit-card" style="border-top: 4px solid var(--brand-primary);">
+          <h3 style="margin-bottom: 0.25rem;">1. Select Your Unit</h3>
+          <p class="small-meta" style="margin-bottom: 1rem;">Choose your house number to view current charges and arrears.</p>
+
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label for="tenantPayUnitSelect">House / Unit *</label>
+            <select id="tenantPayUnitSelect" class="form-select" style="font-weight: 600; font-size: 1rem;">
+              <option value="">-- Choose your unit --</option>
+            </select>
+            <span class="field-hint">Select your unit from the list to see what you owe.</span>
+          </div>
+
+          <!-- Unit Statement / Bill Box -->
+          <div id="tenantBillSummaryBox" style="display: none; background: var(--bg-surface-alt); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 1.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px dashed var(--border-main); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+              <div>
+                <strong style="font-size: 1.15rem;" id="tenantSummaryUnitName">-</strong>
+                <div class="small-meta" id="tenantSummaryTenantName">-</div>
+              </div>
+              <div id="tenantSummaryBadge"></div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.875rem;">
+              <div style="display: flex; justify-content: space-between;">
+                <span>Monthly Rent (<span class="current-month-label">Month</span>):</span>
+                <strong class="tabular-nums" id="tenantSummaryRent">KES 0</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>Utility Bills (Water/Garbage/Power):</span>
+                <strong class="tabular-nums" id="tenantSummaryBills">KES 0</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>Arrears Brought Forward:</span>
+                <strong class="tabular-nums" id="tenantSummaryArrears">KES 0</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>Payments Received:</span>
+                <strong class="tabular-nums" style="color: var(--settled);" id="tenantSummaryPaid">- KES 0</strong>
+              </div>
+              
+              <div style="border-top: 2px solid var(--border-main); margin-top: 0.5rem; padding-top: 0.75rem; display: flex; justify-content: space-between; align-items: baseline;">
+                <span style="font-size: 1rem; font-weight: 700;">Total Amount Due:</span>
+                <span style="font-size: 1.35rem; font-weight: 800; color: var(--alert-owing);" class="tabular-nums" id="tenantSummaryTotalDue">KES 0</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="tenantNoUnitSelectedPrompt" class="empty-state" style="padding: 2rem 1rem; margin: 0;">
+            <div class="empty-icon">🏠</div>
+            <p style="margin: 0;">Please select your unit above to load your rent &amp; utility statement.</p>
+          </div>
+        </div>
+
+        <!-- Column 2: M-Pesa Payment Instructions & Confirmation -->
+        <div class="unit-card" style="border-top: 4px solid #2d8a5e;">
+          <h3 style="margin-bottom: 0.25rem;">2. Pay via M-Pesa</h3>
+          <p class="small-meta" style="margin-bottom: 1rem;">Use Safaricom M-Pesa Paybill, Buy Goods Till, or STK Push.</p>
+
+          <!-- Payment Channel Tabs -->
+          <div style="display: flex; gap: 0.35rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-main); padding-bottom: 0.5rem;">
+            <button type="button" class="btn btn-sm btn-primary payment-channel-tab" data-channel="paybill">
+              Paybill
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary payment-channel-tab" data-channel="till">
+              Buy Goods Till
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary payment-channel-tab" data-channel="stk">
+              📲 STK Push (Phone Prompt)
+            </button>
+          </div>
+
+          <!-- Channel 1: Paybill Details -->
+          <div id="channelPaybill" class="payment-channel-pane">
+            <div style="background: var(--bg-surface-tint); border: 1px solid var(--settled-border); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                <div>
+                  <div class="small-meta" style="font-weight: 600;">BUSINESS NUMBER (PAYBILL)</div>
+                  <strong style="font-size: 1.25rem; font-family: var(--font-mono);" id="displayPaybillNumber">522522</strong>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary copy-btn" data-copy-target="displayPaybillNumber">
+                  📋 Copy
+                </button>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem; border-top: 1px dashed var(--border-main); padding-top: 0.65rem;">
+                <div>
+                  <div class="small-meta" style="font-weight: 600;">ACCOUNT NUMBER</div>
+                  <strong style="font-size: 1.15rem; font-family: var(--font-mono);" id="displayAccountNumber">-</strong>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary copy-btn" data-copy-target="displayAccountNumber">
+                  📋 Copy
+                </button>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border-main); padding-top: 0.65rem;">
+                <div>
+                  <div class="small-meta" style="font-weight: 600;">AMOUNT TO PAY</div>
+                  <strong style="font-size: 1.15rem; color: var(--alert-owing);" class="tabular-nums" id="displayPaybillAmount">KES 0</strong>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary copy-btn" data-copy-target="displayPaybillAmount">
+                  📋 Copy
+                </button>
+              </div>
+            </div>
+
+            <ol style="font-size: 0.8125rem; color: var(--text-muted); padding-left: 1.25rem; line-height: 1.6; margin-bottom: 1rem;">
+              <li>Go to <strong>M-Pesa</strong> &rarr; <strong>Lipa na M-Pesa</strong> &rarr; <strong>Paybill</strong></li>
+              <li>Enter Business No: <strong id="instructionPaybill">522522</strong></li>
+              <li>Enter Account No: <strong id="instructionAccount">Your Unit</strong></li>
+              <li>Enter Amount and your M-Pesa PIN</li>
+            </ol>
+          </div>
+
+          <!-- Channel 2: Buy Goods Till Details -->
+          <div id="channelTill" class="payment-channel-pane" style="display: none;">
+            <div style="background: var(--bg-surface-tint); border: 1px solid var(--settled-border); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                <div>
+                  <div class="small-meta" style="font-weight: 600;">BUY GOODS TILL NUMBER</div>
+                  <strong style="font-size: 1.25rem; font-family: var(--font-mono);" id="displayTillNumber">123456</strong>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary copy-btn" data-copy-target="displayTillNumber">
+                  📋 Copy Till
+                </button>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border-main); padding-top: 0.65rem;">
+                <div>
+                  <div class="small-meta" style="font-weight: 600;">AMOUNT (KES)</div>
+                  <strong style="font-size: 1.15rem; color: var(--alert-owing);" class="tabular-nums" id="displayTillAmount">KES 0</strong>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary copy-btn" data-copy-target="displayTillAmount">
+                  📋 Copy
+                </button>
+              </div>
+            </div>
+
+            <ol style="font-size: 0.8125rem; color: var(--text-muted); padding-left: 1.25rem; line-height: 1.6; margin-bottom: 1rem;">
+              <li>Go to <strong>M-Pesa</strong> &rarr; <strong>Lipa na M-Pesa</strong> &rarr; <strong>Buy Goods &amp; Services</strong></li>
+              <li>Enter Till No: <strong id="instructionTill">123456</strong></li>
+              <li>Enter Amount and your M-Pesa PIN</li>
+            </ol>
+          </div>
+
+          <!-- Channel 3: STK Push Simulator / Direct Trigger -->
+          <div id="channelStk" class="payment-channel-pane" style="display: none;">
+            <div style="background: #eaf6ef; border: 1px solid #a3e0c0; border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem; color: #1e704a;">
+              <h4 style="margin-bottom: 0.25rem; color: #1e704a;">⚡ Instant M-Pesa Prompt</h4>
+              <p class="small-meta" style="color: #2d6a54;">Enter your phone number to receive the prompt on your phone screen to enter PIN.</p>
+              
+              <div class="form-group" style="margin-top: 0.75rem;">
+                <label for="stkPhoneNumber" style="color: #1e704a;">M-Pesa Phone Number</label>
+                <input type="tel" id="stkPhoneNumber" class="form-input" placeholder="0712 345 678" style="background: #ffffff; border-color: #a3e0c0;">
+              </div>
+
+              <div class="form-group" style="margin-top: 0.5rem;">
+                <label for="stkAmount" style="color: #1e704a;">Amount to Pay (KES)</label>
+                <input type="number" id="stkAmount" class="form-input" placeholder="15000" style="background: #ffffff; border-color: #a3e0c0;">
+              </div>
+
+              <button type="button" class="btn btn-primary" id="triggerStkPushBtn" style="width: 100%; margin-top: 0.75rem; background-color: #1e704a; border-color: #1e704a;">
+                📲 Send M-Pesa Prompt to My Phone
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 4: Submission / Code Entry for Instant Receipt -->
+          <div style="border-top: 2px dashed var(--border-main); padding-top: 1rem; margin-top: 1rem;">
+            <h4 style="margin-bottom: 0.25rem;">3. Confirm Payment &amp; Get Receipt</h4>
+            <p class="small-meta" style="margin-bottom: 0.75rem;">Enter the M-Pesa transaction code received via SMS to immediately credit your unit and download your official receipt.</p>
+
+            <form id="tenantConfirmPaymentForm" style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <div class="form-group" id="groupTenantMpesaCode">
+                <label for="tenantInputMpesaCode">M-Pesa Transaction Code *</label>
+                <input type="text" id="tenantInputMpesaCode" class="form-input" placeholder="e.g. QKD47XYZ89" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700;" required>
+                <span class="field-error">Please enter the M-Pesa code from Safaricom.</span>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group" id="groupTenantAmountPaid">
+                  <label for="tenantInputAmountPaid">Amount Paid (KES) *</label>
+                  <input type="number" id="tenantInputAmountPaid" class="form-input tabular-nums" min="1" step="50" placeholder="15000" required>
+                  <span class="field-error">Please enter a valid amount.</span>
+                </div>
+
+                <div class="form-group">
+                  <label for="tenantInputDatePaid">Payment Date *</label>
+                  <input type="date" id="tenantInputDatePaid" class="form-input" required>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary" style="background-color: #16382c; padding: 0.75rem; font-size: 1rem;">
+                🧾 Confirm Payment &amp; Download Receipt
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ======================================================================
          VIEW 5: SETTINGS & BACKUP
          ====================================================================== -->
     <section id="tab-settings" class="tab-pane" style="display: none;" role="tabpanel">
@@ -1636,6 +1860,19 @@
             <div class="form-group">
               <label for="settingLandlordPhone">Landlord Phone Number</label>
               <input type="tel" id="settingLandlordPhone" class="form-input" placeholder="e.g. 0712 345 678">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="settingPaybillNumber">M-Pesa Paybill Number</label>
+                <input type="text" id="settingPaybillNumber" class="form-input tabular-nums" placeholder="e.g. 522522">
+                <span class="field-hint">Used in Tenant Pay Portal</span>
+              </div>
+              <div class="form-group">
+                <label for="settingTillNumber">Buy Goods Till Number</label>
+                <input type="text" id="settingTillNumber" class="form-input tabular-nums" placeholder="e.g. 123456">
+                <span class="field-hint">Optional Buy Goods Till</span>
+              </div>
             </div>
 
             <div class="form-group">
@@ -2060,6 +2297,8 @@
           name: 'Baraka Apartments',
           landlordName: 'Brian Mwangi',
           phone: '0712 345 678',
+          paybillNumber: '522522',
+          tillNumber: '123456',
           mpesaInstructions: 'M-Pesa Paybill: 522522, Account: [Unit Name]'
         },
         units: [],
@@ -2078,6 +2317,8 @@
             appState = JSON.parse(raw);
             // Ensure schema integrity
             if (!appState.property) appState.property = { ...defaultState.property };
+            if (!appState.property.paybillNumber) appState.property.paybillNumber = '522522';
+            if (!appState.property.tillNumber) appState.property.tillNumber = '123456';
             if (!Array.isArray(appState.units)) appState.units = [];
             if (!Array.isArray(appState.payments)) appState.payments = [];
             if (!Array.isArray(appState.bills)) appState.bills = [];
@@ -2345,6 +2586,7 @@
         renderUnits();
         renderPayments();
         renderBills();
+        renderTenantPay();
         renderSettings();
       }
 
@@ -2896,12 +3138,130 @@
         attachBillTableEventListeners();
       }
 
-      // --- RENDER VIEW 5: SETTINGS ---
+      // --- RENDER VIEW 5: TENANT PAY PORTAL ---
+      function renderTenantPay() {
+        const select = document.getElementById('tenantPayUnitSelect');
+        if (!select) return;
+        const currentSelectedVal = select.value;
+
+        // Populate unit dropdown
+        let html = '<option value="">-- Choose your unit --</option>';
+        appState.units.forEach(unit => {
+          const tenantDesc = unit.isVacant ? '(Vacant)' : (unit.tenantName ? `(${unit.tenantName})` : '');
+          html += `<option value="${escapeHTML(unit.id)}">${escapeHTML(unit.name)} ${escapeHTML(tenantDesc)}</option>`;
+        });
+        select.innerHTML = html;
+
+        // Restore selection if valid
+        if (currentSelectedVal && appState.units.some(u => u.id === currentSelectedVal)) {
+          select.value = currentSelectedVal;
+        }
+
+        // Update Paybill & Till numbers from settings
+        const prop = appState.property || {};
+        const paybillNum = prop.paybillNumber || '522522';
+        const tillNum = prop.tillNumber || '123456';
+
+        const displayPaybillEl = document.getElementById('displayPaybillNumber');
+        if (displayPaybillEl) displayPaybillEl.textContent = paybillNum;
+        const instructionPaybillEl = document.getElementById('instructionPaybill');
+        if (instructionPaybillEl) instructionPaybillEl.textContent = paybillNum;
+
+        const displayTillEl = document.getElementById('displayTillNumber');
+        if (displayTillEl) displayTillEl.textContent = tillNum;
+        const instructionTillEl = document.getElementById('instructionTill');
+        if (instructionTillEl) instructionTillEl.textContent = tillNum;
+
+        // Render details for currently selected unit
+        updateTenantPayDetails(select.value);
+      }
+
+      function updateTenantPayDetails(unitId) {
+        const summaryBox = document.getElementById('tenantBillSummaryBox');
+        const emptyPrompt = document.getElementById('tenantNoUnitSelectedPrompt');
+        if (!summaryBox || !emptyPrompt) return;
+
+        if (!unitId) {
+          summaryBox.style.display = 'none';
+          emptyPrompt.style.display = 'block';
+          document.getElementById('displayAccountNumber').textContent = '-';
+          document.getElementById('instructionAccount').textContent = 'Your Unit';
+          document.getElementById('displayPaybillAmount').textContent = 'KES 0';
+          document.getElementById('displayTillAmount').textContent = 'KES 0';
+          return;
+        }
+
+        const unit = appState.units.find(u => u.id === unitId);
+        if (!unit) {
+          summaryBox.style.display = 'none';
+          emptyPrompt.style.display = 'block';
+          return;
+        }
+
+        const fin = calculateUnitFinancials(unit, activeMonth);
+        const amountDue = Math.max(0, fin.closingBalance);
+
+        summaryBox.style.display = 'block';
+        emptyPrompt.style.display = 'none';
+
+        document.getElementById('tenantSummaryUnitName').textContent = unit.name;
+        document.getElementById('tenantSummaryTenantName').textContent = unit.isVacant 
+          ? 'Vacant Unit' 
+          : `${unit.tenantName || 'Tenant'} ${unit.tenantPhone ? '• ' + unit.tenantPhone : ''}`;
+
+        // Badge
+        const badgeEl = document.getElementById('tenantSummaryBadge');
+        if (fin.closingBalance > 0) {
+          badgeEl.innerHTML = `<span class="badge badge-owing">Owing ${formatKES(fin.closingBalance)}</span>`;
+        } else if (fin.closingBalance < 0) {
+          badgeEl.innerHTML = `<span class="badge badge-credit">Advance Credit ${formatKES(Math.abs(fin.closingBalance))}</span>`;
+        } else {
+          badgeEl.innerHTML = `<span class="badge badge-paid">Fully Settled</span>`;
+        }
+
+        document.getElementById('tenantSummaryRent').textContent = formatKES(fin.monthRentCharged);
+        document.getElementById('tenantSummaryBills').textContent = formatKES(fin.monthBillsCharged);
+        document.getElementById('tenantSummaryArrears').textContent = formatKES(fin.openingBalance);
+        document.getElementById('tenantSummaryPaid').textContent = '- ' + formatKES(fin.monthPayments);
+        document.getElementById('tenantSummaryTotalDue').textContent = formatKES(amountDue);
+
+        // Account number in Paybill instructions
+        document.getElementById('displayAccountNumber').textContent = unit.name;
+        document.getElementById('instructionAccount').textContent = unit.name;
+
+        // Copyable amounts
+        document.getElementById('displayPaybillAmount').textContent = formatKES(amountDue > 0 ? amountDue : fin.monthRentCharged);
+        document.getElementById('displayTillAmount').textContent = formatKES(amountDue > 0 ? amountDue : fin.monthRentCharged);
+
+        // Prefill STK push fields
+        const stkPhone = document.getElementById('stkPhoneNumber');
+        if (stkPhone) {
+          stkPhone.value = unit.tenantPhone || '';
+        }
+        const stkAmt = document.getElementById('stkAmount');
+        if (stkAmt) {
+          stkAmt.value = amountDue > 0 ? amountDue : (fin.monthRentCharged || 10000);
+        }
+
+        // Prefill confirmation form
+        const confAmt = document.getElementById('tenantInputAmountPaid');
+        if (confAmt) {
+          confAmt.value = amountDue > 0 ? amountDue : (fin.monthRentCharged || 10000);
+        }
+        const confDate = document.getElementById('tenantInputDatePaid');
+        if (confDate && !confDate.value) {
+          confDate.value = new Date().toISOString().split('T')[0];
+        }
+      }
+
+      // --- RENDER VIEW 6: SETTINGS ---
       function renderSettings() {
         const prop = appState.property || {};
         document.getElementById('settingPropertyName').value = prop.name || '';
         document.getElementById('settingLandlordName').value = prop.landlordName || '';
         document.getElementById('settingLandlordPhone').value = prop.phone || '';
+        document.getElementById('settingPaybillNumber').value = prop.paybillNumber || '522522';
+        document.getElementById('settingTillNumber').value = prop.tillNumber || '123456';
         document.getElementById('settingMpesaPaymentInstructions').value = prop.mpesaInstructions || '';
 
         // Update brand title
@@ -3515,7 +3875,8 @@
         if (fin.openingBalance > 0) breakdownText += `, Previous arrears: ${formatKES(fin.openingBalance)}`;
         if (fin.monthBillsCharged > 0) breakdownText += `, Utilities: ${formatKES(fin.monthBillsCharged)}`;
 
-        const message = `Jambo ${tenantFirstName},\n\nThis is a friendly reminder from ${prop.name || 'Rent Book'} regarding Unit ${unit.name}.\n\nThe outstanding balance for ${monthName} is ${amountStr} (${breakdownText}).\n${mpesaNote}\n\nKindly remit at your earliest convenience. Thank you!`;
+        const payLink = `${window.location.origin}${window.location.pathname}?unit=${encodeURIComponent(unit.id)}`;
+        const message = `Jambo ${tenantFirstName},\n\nThis is a friendly reminder from ${prop.name || 'Rent Book'} regarding Unit ${unit.name}.\n\nThe outstanding balance for ${monthName} is ${amountStr} (${breakdownText}).\n${mpesaNote}\n\n💳 Pay online & get instant receipt:\n${payLink}\n\nKindly remit at your earliest convenience. Thank you!`;
 
         currentReminderTarget = {
           phone: unit.tenantPhone || '',
@@ -3674,6 +4035,8 @@
           name: 'Baraka Heights, Roysambu',
           landlordName: 'Brian Mwangi',
           phone: '0722 123 456',
+          paybillNumber: '522522',
+          tillNumber: '889900',
           mpesaInstructions: 'Paybill: 522522, Account: [Unit Name]'
         };
 
@@ -4013,12 +4376,206 @@
             name: document.getElementById('settingPropertyName').value.trim() || 'Rent Book',
             landlordName: document.getElementById('settingLandlordName').value.trim() || '',
             phone: document.getElementById('settingLandlordPhone').value.trim() || '',
+            paybillNumber: document.getElementById('settingPaybillNumber').value.trim() || '522522',
+            tillNumber: document.getElementById('settingTillNumber').value.trim() || '123456',
             mpesaInstructions: document.getElementById('settingMpesaPaymentInstructions').value.trim() || ''
           };
           saveState();
           renderSettings();
+          renderTenantPay();
           showToast('Property details saved.');
         });
+
+        // Dashboard quick action to Tenant Pay Portal
+        const dashPayBtn = document.getElementById('dashOpenTenantPayBtn');
+        if (dashPayBtn) {
+          dashPayBtn.addEventListener('click', () => {
+            const tenantPayTab = document.querySelector('.nav-tab[data-tab="tenant-pay"]');
+            if (tenantPayTab) tenantPayTab.click();
+          });
+        }
+
+        // Tenant Pay Portal: Unit selection
+        const tenantSelectEl = document.getElementById('tenantPayUnitSelect');
+        if (tenantSelectEl) {
+          tenantSelectEl.addEventListener('change', (e) => {
+            updateTenantPayDetails(e.target.value);
+          });
+        }
+
+        // Tenant Pay Portal: Channel switching (Paybill / Till / STK)
+        document.querySelectorAll('.payment-channel-tab').forEach(btn => {
+          btn.addEventListener('click', () => {
+            document.querySelectorAll('.payment-channel-tab').forEach(b => {
+              b.classList.remove('btn-primary');
+              b.classList.add('btn-secondary');
+            });
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary');
+
+            const channel = btn.dataset.channel;
+            document.querySelectorAll('.payment-channel-pane').forEach(p => p.style.display = 'none');
+            if (channel === 'paybill') {
+              const el = document.getElementById('channelPaybill');
+              if (el) el.style.display = 'block';
+            } else if (channel === 'till') {
+              const el = document.getElementById('channelTill');
+              if (el) el.style.display = 'block';
+            } else if (channel === 'stk') {
+              const el = document.getElementById('channelStk');
+              if (el) el.style.display = 'block';
+            }
+          });
+        });
+
+        // Tenant Pay Portal: One-tap Copy Buttons
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const targetId = btn.dataset.copyTarget;
+            const targetEl = document.getElementById(targetId);
+            if (!targetEl) return;
+            let textToCopy = targetEl.textContent.trim();
+            if (textToCopy.startsWith('KES ')) {
+              textToCopy = textToCopy.replace(/[^0-9]/g, '');
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(textToCopy).then(() => {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '✓ Copied!';
+                btn.style.backgroundColor = '#16382c';
+                btn.style.color = '#ffffff';
+                setTimeout(() => {
+                  btn.innerHTML = orig;
+                  btn.style.backgroundColor = '';
+                  btn.style.color = '';
+                }, 2000);
+                showToast(`Copied "${textToCopy}" to clipboard`);
+              }).catch(() => {
+                prompt('Copy text:', textToCopy);
+              });
+            } else {
+              prompt('Copy text:', textToCopy);
+            }
+          });
+        });
+
+        // Tenant Pay Portal: STK Push Simulator
+        const triggerStkBtn = document.getElementById('triggerStkPushBtn');
+        if (triggerStkBtn) {
+          triggerStkBtn.addEventListener('click', () => {
+            const phone = document.getElementById('stkPhoneNumber').value.trim();
+            const amount = Number(document.getElementById('stkAmount').value);
+            if (!phone || phone.length < 9) {
+              showToast('Please enter a valid Safaricom phone number (e.g. 0712 345 678)', 'warning');
+              return;
+            }
+            if (!amount || amount <= 0) {
+              showToast('Please enter a valid amount to pay.', 'warning');
+              return;
+            }
+
+            triggerStkBtn.disabled = true;
+            triggerStkBtn.innerHTML = '⏳ Sending STK Prompt to phone...';
+
+            setTimeout(() => {
+              triggerStkBtn.disabled = false;
+              triggerStkBtn.innerHTML = '📲 Send M-Pesa Prompt to My Phone';
+
+              // Generate realistic Safaricom M-Pesa transaction reference (e.g. SBA47XY89Z)
+              const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+              let code = 'S';
+              for (let i = 0; i < 9; i++) {
+                code += chars.charAt(Math.floor(Math.random() * chars.length));
+              }
+
+              document.getElementById('tenantInputMpesaCode').value = code;
+              document.getElementById('tenantInputAmountPaid').value = amount;
+
+              showToast(`📲 STK Prompt sent to ${phone}! Check your phone to enter M-Pesa PIN. Transaction code ${code} filled below.`);
+            }, 1000);
+          });
+        }
+
+        // Tenant Pay Portal: Confirm Payment & Instant Receipt
+        const confirmPayForm = document.getElementById('tenantConfirmPaymentForm');
+        if (confirmPayForm) {
+          confirmPayForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const unitId = document.getElementById('tenantPayUnitSelect').value;
+            if (!unitId) {
+              showToast('Please select your unit above first.', 'warning');
+              return;
+            }
+            const unit = appState.units.find(u => u.id === unitId);
+            if (!unit) return;
+
+            const mpesaCode = document.getElementById('tenantInputMpesaCode').value.trim().toUpperCase();
+            const amount = Number(document.getElementById('tenantInputAmountPaid').value);
+            const datePaid = document.getElementById('tenantInputDatePaid').value;
+
+            if (!mpesaCode) {
+              showToast('Please enter your Safaricom M-Pesa transaction code.', 'warning');
+              return;
+            }
+            if (!amount || amount <= 0) {
+              showToast('Please enter a valid payment amount.', 'warning');
+              return;
+            }
+            if (!datePaid) {
+              showToast('Please select the payment date.', 'warning');
+              return;
+            }
+
+            const exists = appState.payments.some(p => p.mpesaCode && p.mpesaCode.toUpperCase() === mpesaCode);
+            if (exists) {
+              showToast(`M-Pesa code ${mpesaCode} has already been recorded!`, 'warning');
+              return;
+            }
+
+            const newPayment = {
+              id: 'pay_' + Date.now(),
+              unitId: unit.id,
+              amount: amount,
+              date: datePaid,
+              mpesaCode: mpesaCode,
+              notes: 'Paid via Tenant Portal (M-Pesa)'
+            };
+
+            appState.payments.push(newPayment);
+            saveState();
+            renderAll();
+
+            // Clear transaction code input and refresh details
+            document.getElementById('tenantInputMpesaCode').value = '';
+            updateTenantPayDetails(unit.id);
+
+            showToast(`✓ Payment of ${formatKES(amount)} recorded successfully! Opening official receipt...`);
+            setTimeout(() => {
+              handleOpenReceipt(newPayment.id);
+            }, 400);
+          });
+        }
+
+        // Tenant Pay Portal: Copy Portal Link
+        const shareLinkBtn = document.getElementById('tenantShareLinkBtn');
+        if (shareLinkBtn) {
+          shareLinkBtn.addEventListener('click', () => {
+            const selectedUnitId = document.getElementById('tenantPayUnitSelect').value;
+            let link = window.location.origin + window.location.pathname;
+            if (selectedUnitId) {
+              link += `?unit=${encodeURIComponent(selectedUnitId)}`;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(link).then(() => {
+                showToast('Tenant payment portal link copied to clipboard!');
+              }).catch(() => {
+                prompt('Tenant payment portal link:', link);
+              });
+            } else {
+              prompt('Tenant payment portal link:', link);
+            }
+          });
+        }
 
         // Export and Import
         document.getElementById('exportJsonBackupBtn').addEventListener('click', exportJsonBackup);
@@ -4205,12 +4762,34 @@
         document.documentElement.setAttribute('data-theme', theme);
       }
 
+      // Check for Direct Link Query Parameters (e.g. ?unit=unit_sample_1 or ?pay=unit_sample_1)
+      function checkUrlParameters() {
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          const unitParam = urlParams.get('unit') || urlParams.get('pay');
+          if (unitParam) {
+            const tenantPayTab = document.querySelector('.nav-tab[data-tab="tenant-pay"]');
+            if (tenantPayTab) {
+              tenantPayTab.click();
+            }
+            const unitSelect = document.getElementById('tenantPayUnitSelect');
+            if (unitSelect) {
+              unitSelect.value = unitParam;
+              updateTenantPayDetails(unitParam);
+            }
+          }
+        } catch (e) {
+          console.error('URL params check error:', e);
+        }
+      }
+
       // Bootstrap Application
       document.addEventListener('DOMContentLoaded', () => {
         initTheme();
         loadState();
         attachGlobalEventListeners();
         renderAll();
+        checkUrlParameters();
       });
 
     })();

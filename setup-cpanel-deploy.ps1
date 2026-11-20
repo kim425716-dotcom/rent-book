@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$FtpHost = "logictech.co.ke",
     [string]$FtpUsername,
     [string]$FtpPassword,
