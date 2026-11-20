@@ -1644,9 +1644,14 @@
           <h2>Payments Ledger</h2>
           <p class="small-meta">All M-Pesa and cash rent payments received</p>
         </div>
-        <button class="btn btn-primary" id="openAddPaymentModalBtn">
-          + Record Payment
-        </button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary" id="openPrintPaymentsLedgerBtn" title="Open printable monthly payment ledger for current month">
+            🖨️ Print Monthly Ledger
+          </button>
+          <button class="btn btn-primary" id="openAddPaymentModalBtn">
+            + Record Payment
+          </button>
+        </div>
       </div>
 
       <!-- Payments Filter Bar -->
@@ -2160,6 +2165,10 @@
 
             <button class="btn btn-secondary" id="exportPaymentsCsvBtn">
               📊 Export Payments Ledger (CSV)
+            </button>
+
+            <button class="btn btn-secondary" id="settingsPrintPaymentsLedgerBtn" title="Open printable payment ledger and cash book">
+              🖨️ Print Monthly Payment Ledger (PDF)
             </button>
 
             <hr style="border: 0; border-top: 1px solid var(--border-subtle); margin: 0.5rem 0;">
@@ -2712,6 +2721,57 @@
         <button type="button" class="btn btn-secondary" id="copyAllBulkMessagesBtn">
           📋 Copy All Messages Text
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL 10: PRINTABLE MONTHLY PAYMENT LEDGER
+       ======================================================================== -->
+  <div class="modal-backdrop" id="paymentLedgerModal" role="dialog" aria-modal="true" aria-labelledby="paymentLedgerModalTitle">
+    <div class="modal-dialog" style="max-width: 920px; width: 96%;">
+      <div class="modal-header">
+        <div>
+          <h3 id="paymentLedgerModalTitle">🖨️ Monthly Payment Ledger &amp; Cash Book</h3>
+          <p class="small-meta">Printable accounting record of all M-Pesa &amp; cash rent collections</p>
+        </div>
+        <button class="modal-close-btn" data-close-modal="paymentLedgerModal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+        <!-- Filter Controls (no-print) -->
+        <div class="no-print" style="background: var(--bg-surface-alt); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; font-size: 0.85rem;">
+            <div class="form-group">
+              <label for="ledgerModalMonthSelect">Ledger Month</label>
+              <input type="month" id="ledgerModalMonthSelect" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="ledgerModalScopeSelect">Transaction Scope</label>
+              <select id="ledgerModalScopeSelect" class="form-select">
+                <option value="month" selected>Selected Month Only</option>
+                <option value="all">All Recorded History</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Printable Payment Ledger Sheet -->
+        <div class="statement-sheet printable-area" id="printablePaymentLedgerArea">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <div class="modal-footer no-print" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <button type="button" class="btn btn-secondary" data-close-modal="paymentLedgerModal">Close</button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" id="exportLedgerCsvBtn">
+            📊 Export CSV (Excel)
+          </button>
+          <button type="button" class="btn btn-primary" id="printLedgerActionBtn">
+            🖨️ Print / Save as PDF
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -3710,6 +3770,148 @@
         }).catch(() => {
           showToast('Could not copy automatically.', 'warning');
         });
+      }
+
+      // --- PRINTABLE MONTHLY PAYMENT LEDGER HELPERS ---
+      function handleOpenPaymentLedger(month = '') {
+        const monthInput = document.getElementById('ledgerModalMonthSelect');
+        if (monthInput) {
+          monthInput.value = month || activeMonth;
+        }
+        renderPrintablePaymentLedger();
+        openModal('paymentLedgerModal');
+      }
+
+      function renderPrintablePaymentLedger() {
+        const monthInput = document.getElementById('ledgerModalMonthSelect');
+        const scopeSelect = document.getElementById('ledgerModalScopeSelect');
+        const monthVal = monthInput ? monthInput.value || activeMonth : activeMonth;
+        const scopeVal = scopeSelect ? scopeSelect.value : 'month';
+        const prop = appState.property || {};
+
+        let filteredPayments = [...appState.payments];
+        if (scopeVal === 'month') {
+          filteredPayments = filteredPayments.filter(p => p.date && p.date.substring(0, 7) === monthVal);
+        }
+
+        // Sort chronologically ascending
+        filteredPayments.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+        const totalAmount = filteredPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+        const mpesaPayments = filteredPayments.filter(p => p.mpesaCode && p.mpesaCode.trim());
+        const mpesaCount = mpesaPayments.length;
+        const mpesaTotal = mpesaPayments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+        const cashCount = filteredPayments.length - mpesaCount;
+        const cashTotal = totalAmount - mpesaTotal;
+
+        const scopeLabel = scopeVal === 'month' 
+          ? `MONTH: ${formatMonthName(monthVal).toUpperCase()}` 
+          : `ALL RECORDED HISTORY (${filteredPayments.length} TRANSACTIONS)`;
+
+        let rowsHtml = '';
+        if (filteredPayments.length === 0) {
+          rowsHtml = `
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 2rem 1rem; color: #6b7280; font-style: italic;">
+                No payment transactions recorded for ${scopeVal === 'month' ? formatMonthName(monthVal) : 'this period'}.
+              </td>
+            </tr>
+          `;
+        } else {
+          filteredPayments.forEach((p, idx) => {
+            const unit = appState.units.find(u => u.id === p.unitId) || { name: 'Unknown', tenantName: 'N/A' };
+            const mpesaBadge = p.mpesaCode 
+              ? `<span style="font-family: var(--font-mono); font-weight: 700; color: #047857;">M-Pesa (${escapeHTML(p.mpesaCode)})</span>` 
+              : `<span style="color: #6b7280; font-style: italic;">Cash / Direct</span>`;
+
+            rowsHtml += `
+              <tr>
+                <td style="text-align: center; color: #6b7280;">${idx + 1}</td>
+                <td><strong>${formatDateKE(p.date)}</strong></td>
+                <td><strong>Unit ${escapeHTML(unit.name)}</strong></td>
+                <td>${escapeHTML(unit.tenantName || 'N/A')}</td>
+                <td>${mpesaBadge}</td>
+                <td>${escapeHTML(p.notes || 'Rent payment')}</td>
+                <td style="text-align: right; font-weight: 700; color: #047857;" class="tabular-nums">${formatKES(p.amount)}</td>
+              </tr>
+            `;
+          });
+        }
+
+        const html = `
+          <div class="receipt-header" style="text-align: center; border-bottom: 2px solid #111827; padding-bottom: 1rem; margin-bottom: 1.25rem;">
+            <div style="font-size: 0.8125rem; text-transform: uppercase; letter-spacing: 0.05em; color: #4b5563;">Official Property Collections Ledger</div>
+            <h2 style="margin: 0.25rem 0; font-size: 1.5rem; color: #111827;">${escapeHTML(prop.name || 'Rent Book')}</h2>
+            <div style="font-size: 0.9rem; color: #1f2937;">
+              <strong>Landlord / Caretaker:</strong> ${escapeHTML(prop.landlordName || 'Owner')} &bull; <strong>Phone:</strong> ${escapeHTML(prop.phone || 'N/A')}
+            </div>
+            <div style="font-size: 0.875rem; font-weight: 800; color: #16382c; margin-top: 0.35rem; letter-spacing: 0.05em;">
+              MONTHLY PAYMENTS LEDGER &bull; ${scopeLabel}
+            </div>
+          </div>
+
+          <!-- Summary Metric Cards -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem;">
+            <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 0.75rem; border-radius: 6px;">
+              <div style="font-size: 0.75rem; color: #065f46; text-transform: uppercase;">Total Collections</div>
+              <div style="font-size: 1.35rem; font-weight: 800; color: #047857;" class="tabular-nums">${formatKES(totalAmount)}</div>
+              <div style="font-size: 0.75rem; color: #065f46;">${filteredPayments.length} Total Payment${filteredPayments.length === 1 ? '' : 's'}</div>
+            </div>
+
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 0.75rem; border-radius: 6px;">
+              <div style="font-size: 0.75rem; color: #15803d; text-transform: uppercase;">Safaricom M-Pesa</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #16a34a;" class="tabular-nums">${formatKES(mpesaTotal)}</div>
+              <div style="font-size: 0.75rem; color: #15803d;">${mpesaCount} Transactions</div>
+            </div>
+
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 0.75rem; border-radius: 6px;">
+              <div style="font-size: 0.75rem; color: #4b5563; text-transform: uppercase;">Cash / Direct</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #1f2937;" class="tabular-nums">${formatKES(cashTotal)}</div>
+              <div style="font-size: 0.75rem; color: #4b5563;">${cashCount} Transactions</div>
+            </div>
+          </div>
+
+          <!-- Transactions Table -->
+          <table class="receipt-table" style="font-size: 0.8125rem;">
+            <thead>
+              <tr>
+                <th style="width: 35px; text-align: center;">#</th>
+                <th style="width: 85px;">Date</th>
+                <th style="width: 90px;">Unit</th>
+                <th>Tenant</th>
+                <th>Method &amp; M-Pesa Code</th>
+                <th>Notes / Purpose</th>
+                <th style="text-align: right; width: 115px;">Amount (KES)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+            <tfoot>
+              <tr style="background: #f3f4f6; font-weight: 800; border-top: 2px solid #111827;">
+                <td colspan="6" style="text-align: right; padding: 0.65rem;">GRAND TOTAL PAYMENTS:</td>
+                <td style="text-align: right; color: #047857; font-size: 0.95rem;" class="tabular-nums">${formatKES(totalAmount)}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <!-- Verification & Audit Block -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid #d1d5db; font-size: 0.85rem; page-break-inside: avoid;">
+            <div>
+              <strong>Audited &amp; Certified by Landlord / Caretaker:</strong><br>
+              I certify that this ledger accurately records all rental payments received for the specified period.<br><br>
+              Signature: _________________________________<br>
+              Date: _____________________________________
+            </div>
+            <div style="text-align: right;">
+              <strong>Rent Book Kenya</strong><br>
+              Official Rental Property Management System<br>
+              Date Printed: ${formatDateKE(new Date().toISOString().split('T')[0])}
+            </div>
+          </div>
+        `;
+
+        document.getElementById('printablePaymentLedgerArea').innerHTML = html;
       }
 
       // --- RENDER VIEW 1: DASHBOARD ---
@@ -6230,6 +6432,35 @@
               }
             }
           });
+        }
+
+        // Printable Payment Ledger Listeners
+        const printLedgerBtn = document.getElementById('openPrintPaymentsLedgerBtn');
+        if (printLedgerBtn) {
+          printLedgerBtn.addEventListener('click', () => handleOpenPaymentLedger(activeMonth));
+        }
+
+        const settingsPrintLedgerBtn = document.getElementById('settingsPrintPaymentsLedgerBtn');
+        if (settingsPrintLedgerBtn) {
+          settingsPrintLedgerBtn.addEventListener('click', () => handleOpenPaymentLedger(activeMonth));
+        }
+
+        ['ledgerModalMonthSelect', 'ledgerModalScopeSelect'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('change', renderPrintablePaymentLedger);
+            el.addEventListener('input', renderPrintablePaymentLedger);
+          }
+        });
+
+        const printLedgerActionBtn = document.getElementById('printLedgerActionBtn');
+        if (printLedgerActionBtn) {
+          printLedgerActionBtn.addEventListener('click', () => window.print());
+        }
+
+        const exportLedgerCsvBtn = document.getElementById('exportLedgerCsvBtn');
+        if (exportLedgerCsvBtn) {
+          exportLedgerCsvBtn.addEventListener('click', exportPaymentsCsv);
         }
 
         // Owner's Monthly Report & KRA MRI Tax Listeners
