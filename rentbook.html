@@ -1284,6 +1284,9 @@
 
       <!-- Quick Actions & Theme Toggle -->
       <div class="header-actions">
+        <button class="btn header-btn" id="lockNowBtn" title="Lock ledger now (requires PIN if enabled)" aria-label="Lock ledger">
+          🔒 Lock
+        </button>
         <button class="btn header-btn" id="todayMonthBtn" title="Jump to current real month">
           Current Month
         </button>
@@ -1889,6 +1892,80 @@
           </form>
         </div>
 
+        <!-- Security & Landlord PIN Protection -->
+        <div class="unit-card" id="securitySettingsCard">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <h3 style="margin: 0;">🛡️ Landlord PIN &amp; Security</h3>
+              <p class="small-meta">Protect your rental ledger, tenant balances, and financial records on shared phones or laptops.</p>
+            </div>
+            <div id="pinStatusBadge"></div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <!-- PIN Configuration Section -->
+            <form id="pinSettingsForm" style="display: flex; flex-direction: column; gap: 0.75rem;">
+              <div id="pinCurrentGroup" class="form-group" style="display: none;">
+                <label for="settingCurrentPin">Current Landlord PIN</label>
+                <input type="password" id="settingCurrentPin" class="form-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Enter current PIN" autocomplete="off">
+              </div>
+
+              <div class="form-group">
+                <label for="settingNewPin" id="settingNewPinLabel">Set 4 to 6 Digit PIN</label>
+                <input type="password" id="settingNewPin" class="form-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Enter 4-6 digit PIN" autocomplete="off">
+                <span class="field-hint" id="pinFormHint">Only numbers allowed (e.g. 2541). Keep this safe.</span>
+              </div>
+
+              <div class="form-group" id="pinConfirmGroup">
+                <label for="settingConfirmPin">Confirm New PIN</label>
+                <input type="password" id="settingConfirmPin" class="form-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Re-enter PIN to confirm" autocomplete="off">
+              </div>
+
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button type="submit" class="btn btn-primary" id="savePinBtn">
+                  🔒 Save PIN
+                </button>
+                <button type="button" class="btn btn-danger" id="disablePinBtn" style="display: none;">
+                  🔓 Remove PIN
+                </button>
+              </div>
+            </form>
+
+            <hr style="border: 0; border-top: 1px solid var(--border-subtle); margin: 0.25rem 0;">
+
+            <!-- Auto-Lock Timeout -->
+            <div class="form-group">
+              <label for="settingAutoLockTimeout">Inactivity Auto-Lock Timer</label>
+              <select id="settingAutoLockTimeout" class="form-input">
+                <option value="5">5 minutes of inactivity</option>
+                <option value="15">15 minutes of inactivity</option>
+                <option value="30" selected>30 minutes of inactivity (Recommended)</option>
+                <option value="60">1 hour of inactivity</option>
+                <option value="0">Never (Manual lock only)</option>
+              </select>
+              <span class="field-hint">Automatically locks the ledger when no clicks or touches occur.</span>
+            </div>
+
+            <!-- Privacy Mode Toggle -->
+            <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--bg-elevated); border-radius: 6px; border: 1px solid var(--border-main);">
+              <input type="checkbox" id="settingMaskPhoneNumbers" style="width: 1.1rem; height: 1.1rem; accent-color: var(--brand-primary); cursor: pointer;">
+              <div>
+                <label for="settingMaskPhoneNumbers" style="font-weight: 600; font-size: 0.875rem; cursor: pointer; display: block; margin: 0;">
+                  Privacy Mode: Mask Tenant Phone Numbers
+                </label>
+                <span class="small-meta">Hides middle digits of phone numbers (e.g. 0712 ••• 678) when viewing unit cards and tables in public.</span>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem;">
+              <span class="small-meta">Step away safely at any time:</span>
+              <button type="button" class="btn btn-secondary btn-sm" id="manualLockFromSettingsBtn">
+                🔒 Lock Ledger Now
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Export & Backup -->
         <div class="unit-card">
           <h3 style="margin-bottom: 0.75rem;">💾 Data Backup &amp; Excel Export</h3>
@@ -2301,9 +2378,15 @@
       const MAX_AMOUNT = 50000000; // KES 50M ceiling
       const MPESA_CODE_REGEX = /^[A-Z0-9]{8,12}$/;
       const PHONE_REGEX = /^(\+?254|0)[17]\d{8}$/;
-      const INACTIVITY_LOCK_MS = 30 * 60 * 1000; // 30 minutes
+      const PIN_SALT_KEY = 'rentbook_pin_salt';
+      const PIN_HASH_KEY = 'rentbook_pin_hash';
+      const PIN_ENABLED_KEY = 'rentbook_pin_enabled';
+      const LOCK_TIMEOUT_KEY = 'rentbook_lock_timeout';
       let inactivityTimer = null;
       let isSessionLocked = false;
+      let pinFailedAttempts = 0;
+      let pinLockoutUntil = 0;
+      let lockoutInterval = null;
 
       // Default Initial State
       const defaultState = {
@@ -2318,6 +2401,9 @@
         units: [],
         payments: [],
         bills: [],
+        security: {
+          maskPhoneNumbers: false
+        },
         hasSeenOnboarding: false
       };
 
@@ -2336,6 +2422,7 @@
             if (!Array.isArray(appState.units)) appState.units = [];
             if (!Array.isArray(appState.payments)) appState.payments = [];
             if (!Array.isArray(appState.bills)) appState.bills = [];
+            if (!appState.security) appState.security = { maskPhoneNumbers: false };
           } else {
             appState = JSON.parse(JSON.stringify(defaultState));
           }
@@ -2371,6 +2458,18 @@
       /* ========================================================================
          SECTION 2: FORMATTERS & UTILITIES
          ======================================================================== */
+      // Privacy Mode: Mask tenant phone number if enabled
+      function displayTenantPhone(phone) {
+        if (!phone) return 'N/A';
+        if (appState && appState.security && appState.security.maskPhoneNumbers) {
+          const clean = phone.trim();
+          if (clean.length >= 8) {
+            return clean.substring(0, 4) + ' ••• ' + clean.substring(clean.length - 3);
+          }
+        }
+        return phone;
+      }
+
       // Formats number to KES with commas (e.g. 15000 -> "KES 15,000")
       function formatKES(amount) {
         const num = Math.round(Number(amount) || 0);
@@ -2466,7 +2565,8 @@
             u: appState.units.length,
             p: appState.payments.length,
             b: appState.bills.length,
-            n: appState.property.name || ''
+            n: appState.property.name || '',
+            s: appState.security ? !!appState.security.maskPhoneNumbers : false
           });
           let hash = 0;
           for (let i = 0; i < payload.length; i++) {
@@ -2492,40 +2592,237 @@
         } catch (e) { return true; }
       }
 
+      // --- LANDLORD PIN & SECURITY HELPERS ---
+      function getInactivityLockMs() {
+        try {
+          const stored = localStorage.getItem(LOCK_TIMEOUT_KEY);
+          if (stored !== null) {
+            const minutes = parseInt(stored, 10);
+            if (minutes === 0) return 0; // 0 means Never
+            if (!isNaN(minutes) && minutes > 0) return minutes * 60 * 1000;
+          }
+        } catch (e) {}
+        return 30 * 60 * 1000; // default: 30 minutes
+      }
+
+      function isPinSet() {
+        try {
+          return localStorage.getItem(PIN_ENABLED_KEY) === 'true' && !!localStorage.getItem(PIN_HASH_KEY);
+        } catch (e) {
+          return false;
+        }
+      }
+
+      async function hashPin(pin, salt) {
+        try {
+          if (window.crypto && window.crypto.subtle) {
+            const enc = new TextEncoder();
+            const data = enc.encode('rentbook-v1:' + salt + ':' + pin);
+            const buf = await crypto.subtle.digest('SHA-256', data);
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+          }
+        } catch (e) {}
+        // Fallback FNV-1a hash
+        let h = 0x811c9dc5;
+        const s = 'rb:' + salt + ':' + pin;
+        for (let i = 0; i < s.length; i++) {
+          h ^= s.charCodeAt(i);
+          h = Math.imul(h, 0x01000193);
+        }
+        return (h >>> 0).toString(16);
+      }
+
+      async function verifyPin(inputPin) {
+        try {
+          const salt = localStorage.getItem(PIN_SALT_KEY) || '';
+          const hash = localStorage.getItem(PIN_HASH_KEY) || '';
+          if (!salt || !hash) return false;
+          const computed = await hashPin(inputPin, salt);
+          return computed === hash;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      async function setPin(pin) {
+        const saltArr = new Uint8Array(16);
+        if (window.crypto && window.crypto.getRandomValues) {
+          window.crypto.getRandomValues(saltArr);
+        } else {
+          for (let i = 0; i < 16; i++) saltArr[i] = Math.floor(Math.random() * 256);
+        }
+        const salt = Array.from(saltArr).map(b => b.toString(16).padStart(2, '0')).join('');
+        const hash = await hashPin(pin, salt);
+        localStorage.setItem(PIN_SALT_KEY, salt);
+        localStorage.setItem(PIN_HASH_KEY, hash);
+        localStorage.setItem(PIN_ENABLED_KEY, 'true');
+      }
+
+      function removePin() {
+        localStorage.removeItem(PIN_SALT_KEY);
+        localStorage.removeItem(PIN_HASH_KEY);
+        localStorage.setItem(PIN_ENABLED_KEY, 'false');
+      }
+
       // Inactivity auto-lock (protects landlord data on shared devices)
       function resetInactivityTimer() {
         if (inactivityTimer) clearTimeout(inactivityTimer);
         if (isSessionLocked) return;
+        const timeoutMs = getInactivityLockMs();
+        if (timeoutMs <= 0) return; // Never auto-lock
         inactivityTimer = setTimeout(() => {
-          lockSession();
-        }, INACTIVITY_LOCK_MS);
+          lockSession('inactivity');
+        }, timeoutMs);
       }
 
-      function lockSession() {
+      function lockSession(reason = 'inactivity') {
         isSessionLocked = true;
-        // Hide all sensitive tabs, show lock overlay
         const existing = document.getElementById('sessionLockOverlay');
         if (existing) existing.remove();
 
+        const hasPin = isPinSet();
         const overlay = document.createElement('div');
         overlay.id = 'sessionLockOverlay';
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(22,56,44,0.97);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1.5rem;color:#fff;font-family:var(--font-main);';
-        overlay.innerHTML = `
-          <div style="font-size:3rem;">🔒</div>
-          <h2 style="margin:0;font-size:1.5rem;">Session Locked</h2>
-          <p style="max-width:340px;text-align:center;color:#a8c8b8;font-size:0.9rem;">
-            Your Rent Book session was locked after 30 minutes of inactivity to protect your data.
-          </p>
-          <button id="unlockSessionBtn" style="background:#2d8a5e;color:#fff;border:none;padding:0.85rem 2.5rem;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;">
-            🔓 Unlock & Continue
-          </button>
-        `;
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(22,56,44,0.98);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1.25rem;color:#fff;font-family:var(--font-main);padding:1.5rem;box-sizing:border-box;';
+
+        if (hasPin) {
+          overlay.innerHTML = `
+            <div style="font-size:3rem;line-height:1;">🔒</div>
+            <h2 style="margin:0;font-size:1.6rem;text-align:center;">Landlord Ledger Locked</h2>
+            <p style="max-width:360px;text-align:center;color:#a8c8b8;font-size:0.9rem;margin:0;">
+              Enter your Landlord PIN to access your rental records, units, and financial reports.
+            </p>
+
+            <form id="sessionUnlockForm" style="display:flex;flex-direction:column;align-items:center;gap:0.85rem;width:100%;max-width:320px;margin-top:0.5rem;">
+              <div style="position:relative;width:100%;">
+                <input type="password" id="unlockPinInput" inputmode="numeric" pattern="[0-9]*" maxlength="6"
+                  placeholder="••••" autocomplete="off" autofocus
+                  style="width:100%;text-align:center;font-size:1.85rem;letter-spacing:0.4rem;padding:0.75rem 1rem;border-radius:10px;border:2px solid #2d8a5e;background:#132d22;color:#fff;outline:none;box-sizing:border-box;" />
+              </div>
+              
+              <div id="unlockPinError" style="color:#f87171;font-size:0.85rem;min-height:1.2rem;text-align:center;font-weight:600;"></div>
+
+              <button type="submit" id="unlockSessionBtn" style="width:100%;background:#2d8a5e;color:#fff;border:none;padding:0.85rem 1.5rem;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;transition:background 0.2s;">
+                🔓 Unlock Ledger
+              </button>
+            </form>
+
+            <div style="margin-top:0.5rem;text-align:center;">
+              <button type="button" id="lockToTenantPayBtn" style="background:none;border:none;color:#94d2bd;text-decoration:underline;cursor:pointer;font-size:0.875rem;">
+                Paying rent? Open Tenant Pay Portal &rarr;
+              </button>
+            </div>
+          `;
+        } else {
+          overlay.innerHTML = `
+            <div style="font-size:3rem;line-height:1;">🔒</div>
+            <h2 style="margin:0;font-size:1.6rem;text-align:center;">Session Locked</h2>
+            <p style="max-width:360px;text-align:center;color:#a8c8b8;font-size:0.9rem;margin:0;">
+              Your Rent Book session was locked after inactivity to protect your data.
+            </p>
+            <button id="unlockSessionBtn" style="background:#2d8a5e;color:#fff;border:none;padding:0.85rem 2.5rem;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;margin-top:0.5rem;">
+              🔓 Unlock &amp; Continue
+            </button>
+            <div style="margin-top:0.5rem;text-align:center;">
+              <button type="button" id="lockToTenantPayBtn" style="background:none;border:none;color:#94d2bd;text-decoration:underline;cursor:pointer;font-size:0.875rem;">
+                Paying rent? Open Tenant Pay Portal &rarr;
+              </button>
+            </div>
+          `;
+        }
+
         document.body.appendChild(overlay);
-        document.getElementById('unlockSessionBtn').addEventListener('click', unlockSession);
+
+        // Focus PIN input
+        const pinInput = document.getElementById('unlockPinInput');
+        if (pinInput) setTimeout(() => pinInput.focus(), 50);
+
+        // Switch to tenant pay portal button
+        const toPayBtn = document.getElementById('lockToTenantPayBtn');
+        if (toPayBtn) {
+          toPayBtn.addEventListener('click', () => {
+            overlay.remove();
+            const tenantPayTab = document.querySelector('.nav-tab[data-tab="tenant-pay"]');
+            if (tenantPayTab) {
+              document.querySelectorAll('.nav-tab').forEach(t => {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+              });
+              tenantPayTab.classList.add('active');
+              tenantPayTab.setAttribute('aria-selected', 'true');
+              document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+              const targetPane = document.getElementById('tab-tenant-pay');
+              if (targetPane) targetPane.style.display = 'block';
+            }
+          });
+        }
+
+        // Handle unlock submission
+        if (hasPin) {
+          const form = document.getElementById('sessionUnlockForm');
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const now = Date.now();
+            if (now < pinLockoutUntil) {
+              const waitSec = Math.ceil((pinLockoutUntil - now) / 1000);
+              document.getElementById('unlockPinError').textContent = `Too many failed attempts. Wait ${waitSec}s.`;
+              return;
+            }
+
+            const entered = (document.getElementById('unlockPinInput').value || '').trim();
+            if (!entered) {
+              document.getElementById('unlockPinError').textContent = 'Please enter your PIN.';
+              return;
+            }
+
+            const ok = await verifyPin(entered);
+            if (ok) {
+              pinFailedAttempts = 0;
+              unlockSession();
+              showToast('Ledger unlocked.');
+            } else {
+              pinFailedAttempts++;
+              if (pinFailedAttempts >= 5) {
+                pinLockoutUntil = Date.now() + 30000;
+                document.getElementById('unlockPinError').textContent = 'Too many failed attempts. Locked for 30 seconds.';
+                const submitBtn = document.getElementById('unlockSessionBtn');
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.5';
+                if (lockoutInterval) clearInterval(lockoutInterval);
+                lockoutInterval = setInterval(() => {
+                  const left = Math.ceil((pinLockoutUntil - Date.now()) / 1000);
+                  if (left <= 0) {
+                    clearInterval(lockoutInterval);
+                    document.getElementById('unlockPinError').textContent = '';
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    pinFailedAttempts = 0;
+                  } else {
+                    document.getElementById('unlockPinError').textContent = `Too many failed attempts. Locked for ${left}s.`;
+                  }
+                }, 1000);
+              } else {
+                const rem = 5 - pinFailedAttempts;
+                document.getElementById('unlockPinError').textContent = `Incorrect PIN. ${rem} attempt${rem === 1 ? '' : 's'} remaining.`;
+              }
+              const input = document.getElementById('unlockPinInput');
+              if (input) {
+                input.value = '';
+                input.focus();
+              }
+            }
+          });
+        } else {
+          document.getElementById('unlockSessionBtn').addEventListener('click', unlockSession);
+        }
       }
 
       function unlockSession() {
         isSessionLocked = false;
+        if (lockoutInterval) {
+          clearInterval(lockoutInterval);
+          lockoutInterval = null;
+        }
         const overlay = document.getElementById('sessionLockOverlay');
         if (overlay) overlay.remove();
         resetInactivityTimer();
@@ -2842,7 +3139,7 @@
               <td>${escapeHTML(u.tenantName || 'N/A')}</td>
               <td>
                 <a href="tel:${escapeHTML(phoneClean)}" style="color: var(--text-muted); text-decoration: none;">
-                  📞 ${escapeHTML(u.tenantPhone || 'N/A')}
+                  📞 ${escapeHTML(displayTenantPhone(u.tenantPhone))}
                 </a>
               </td>
               <td style="text-align: right; color: var(--alert-owing); font-weight: 700;" class="tabular-nums">
@@ -3062,7 +3359,7 @@
                   <div class="tenant-contact">
                     <span>📞</span>
                     <a href="tel:${escapeHTML(unit.tenantPhone.replace(/\s+/g, ''))}">
-                      ${escapeHTML(unit.tenantPhone)}
+                      ${escapeHTML(displayTenantPhone(unit.tenantPhone))}
                     </a>
                   </div>
                 ` : ''}
@@ -3410,6 +3707,48 @@
         // Update brand title
         document.getElementById('appPropertyTitle').textContent = prop.name || 'Rent Book';
         document.getElementById('appPropertySubtitle').textContent = `${prop.landlordName ? prop.landlordName + ' • ' : ''}Kenya Rental Ledger`;
+
+        // Render Security Card details
+        renderSecuritySettings();
+      }
+
+      function renderSecuritySettings() {
+        const hasPin = isPinSet();
+        const badge = document.getElementById('pinStatusBadge');
+        const currentGroup = document.getElementById('pinCurrentGroup');
+        const label = document.getElementById('settingNewPinLabel');
+        const hint = document.getElementById('pinFormHint');
+        const disableBtn = document.getElementById('disablePinBtn');
+        const timeoutSelect = document.getElementById('settingAutoLockTimeout');
+        const maskPhoneCheck = document.getElementById('settingMaskPhoneNumbers');
+
+        if (badge) {
+          if (hasPin) {
+            badge.innerHTML = '<span style="background:#d1fae5;color:#065f46;padding:0.25rem 0.65rem;border-radius:999px;font-size:0.75rem;font-weight:700;">🔒 PIN ACTIVE</span>';
+          } else {
+            badge.innerHTML = '<span style="background:var(--bg-elevated);color:var(--text-muted);border:1px solid var(--border-main);padding:0.25rem 0.65rem;border-radius:999px;font-size:0.75rem;font-weight:600;">🔓 PIN DISABLED</span>';
+          }
+        }
+
+        if (currentGroup) {
+          currentGroup.style.display = hasPin ? 'block' : 'none';
+        }
+        if (label) {
+          label.textContent = hasPin ? 'Change PIN (Enter New 4-6 Digit PIN)' : 'Set New 4-6 Digit Landlord PIN';
+        }
+        if (hint) {
+          hint.textContent = hasPin ? 'Enter your current PIN above, then your new PIN here.' : 'Choose a memorable 4-6 digit numeric code. Only numbers allowed.';
+        }
+        if (disableBtn) {
+          disableBtn.style.display = hasPin ? 'inline-flex' : 'none';
+        }
+        if (timeoutSelect) {
+          const storedTimeout = localStorage.getItem(LOCK_TIMEOUT_KEY) || '30';
+          timeoutSelect.value = storedTimeout;
+        }
+        if (maskPhoneCheck) {
+          maskPhoneCheck.checked = !!(appState && appState.security && appState.security.maskPhoneNumbers);
+        }
       }
 
       /* ========================================================================
@@ -4467,6 +4806,13 @@
         tabs.forEach(tab => {
           tab.addEventListener('click', () => {
             const targetId = tab.dataset.tab;
+
+            // If session is locked and trying to access an admin tab, trigger lock screen
+            if (isSessionLocked && targetId !== 'tenant-pay') {
+              lockSession('admin_protected');
+              return;
+            }
+
             tabs.forEach(t => {
               t.classList.remove('active');
               t.setAttribute('aria-selected', 'false');
@@ -4603,6 +4949,126 @@
             }
           );
         });
+
+        // Quick Lock Button in Header
+        const lockNowBtn = document.getElementById('lockNowBtn');
+        if (lockNowBtn) {
+          lockNowBtn.addEventListener('click', () => {
+            lockSession('manual');
+          });
+        }
+
+        // Manual Lock from Settings Card
+        const manualLockBtn = document.getElementById('manualLockFromSettingsBtn');
+        if (manualLockBtn) {
+          manualLockBtn.addEventListener('click', () => {
+            lockSession('manual');
+          });
+        }
+
+        // Landlord PIN Settings Form Submit
+        const pinForm = document.getElementById('pinSettingsForm');
+        if (pinForm) {
+          pinForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const hasPin = isPinSet();
+            const currentPinInput = document.getElementById('settingCurrentPin');
+            const newPinInput = document.getElementById('settingNewPin');
+            const confirmPinInput = document.getElementById('settingConfirmPin');
+
+            const newPin = (newPinInput.value || '').trim();
+            const confirmPin = (confirmPinInput.value || '').trim();
+
+            if (hasPin) {
+              const currentPin = (currentPinInput.value || '').trim();
+              if (!currentPin) {
+                showToast('Please enter your current PIN.', 'warning');
+                currentPinInput.focus();
+                return;
+              }
+              const isCurrentOk = await verifyPin(currentPin);
+              if (!isCurrentOk) {
+                showToast('Current PIN is incorrect.', 'error');
+                currentPinInput.focus();
+                return;
+              }
+            }
+
+            if (!/^\d{4,6}$/.test(newPin)) {
+              showToast('PIN must be 4 to 6 numeric digits (e.g. 1234).', 'warning');
+              newPinInput.focus();
+              return;
+            }
+
+            if (newPin !== confirmPin) {
+              showToast('PIN confirmation does not match.', 'warning');
+              confirmPinInput.focus();
+              return;
+            }
+
+            await setPin(newPin);
+            if (currentPinInput) currentPinInput.value = '';
+            newPinInput.value = '';
+            confirmPinInput.value = '';
+            renderSecuritySettings();
+            showToast('Landlord PIN successfully saved!');
+          });
+        }
+
+        // Disable PIN Button
+        const disablePinBtn = document.getElementById('disablePinBtn');
+        if (disablePinBtn) {
+          disablePinBtn.addEventListener('click', async () => {
+            const currentPinInput = document.getElementById('settingCurrentPin');
+            const currentPin = (currentPinInput.value || '').trim();
+            if (!currentPin) {
+              showToast('Enter your current PIN above to disable PIN protection.', 'warning');
+              currentPinInput.focus();
+              return;
+            }
+            const isOk = await verifyPin(currentPin);
+            if (!isOk) {
+              showToast('Current PIN is incorrect. Cannot disable.', 'error');
+              currentPinInput.focus();
+              return;
+            }
+            showConfirm(
+              'Disable Landlord PIN',
+              'Are you sure you want to remove PIN protection? Anyone with access to this device will be able to view and edit rental records.',
+              () => {
+                removePin();
+                if (currentPinInput) currentPinInput.value = '';
+                document.getElementById('settingNewPin').value = '';
+                document.getElementById('settingConfirmPin').value = '';
+                renderSecuritySettings();
+                showToast('PIN protection disabled.', 'warning');
+              }
+            );
+          });
+        }
+
+        // Auto-lock timeout selector change
+        const timeoutSelect = document.getElementById('settingAutoLockTimeout');
+        if (timeoutSelect) {
+          timeoutSelect.addEventListener('change', () => {
+            const val = timeoutSelect.value;
+            localStorage.setItem(LOCK_TIMEOUT_KEY, val);
+            resetInactivityTimer();
+            showToast('Auto-lock timer updated.');
+          });
+        }
+
+        // Mask phone numbers toggle
+        const maskPhoneCheck = document.getElementById('settingMaskPhoneNumbers');
+        if (maskPhoneCheck) {
+          maskPhoneCheck.addEventListener('change', () => {
+            if (!appState.security) appState.security = {};
+            appState.security.maskPhoneNumbers = maskPhoneCheck.checked;
+            saveState();
+            renderAll();
+            showToast(maskPhoneCheck.checked ? 'Privacy mode enabled: Phone numbers masked.' : 'Privacy mode disabled.');
+          });
+        }
 
         // Property Settings Form
         document.getElementById('propertySettingsForm').addEventListener('submit', (e) => {
@@ -4825,8 +5291,17 @@
         document.getElementById('exportUnitsCsvBtn').addEventListener('click', exportUnitsCsv);
         document.getElementById('exportPaymentsCsvBtn').addEventListener('click', exportPaymentsCsv);
 
-        // Reset Data
-        document.getElementById('resetAllDataBtn').addEventListener('click', () => {
+        // Reset Data (Hardened with PIN authorization)
+        document.getElementById('resetAllDataBtn').addEventListener('click', async () => {
+          if (isPinSet()) {
+            const entered = prompt('Enter your Landlord PIN to authorize erasing all records:');
+            if (entered === null) return;
+            const ok = await verifyPin(entered.trim());
+            if (!ok) {
+              showToast('Incorrect PIN. Data erase cancelled.', 'error');
+              return;
+            }
+          }
           showConfirm(
             'Reset & Erase All Records',
             'Are you sure you want to completely erase all units, bills, and payments? This action cannot be undone.',
@@ -5045,6 +5520,15 @@
         renderAll();
         checkUrlParameters();
         initInactivityLock();
+
+        // If PIN is enabled and user is NOT accessing direct tenant payment link, lock immediately on startup
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          const hasTenantParam = urlParams.has('pay') || urlParams.has('unit');
+          if (isPinSet() && !hasTenantParam) {
+            lockSession('startup');
+          }
+        } catch (e) {}
       });
 
     })();
