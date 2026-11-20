@@ -1608,6 +1608,9 @@
           <button class="btn btn-secondary" id="openAgreementModalBtn">
             📜 Tenancy Agreement
           </button>
+          <button class="btn btn-secondary" id="openVacateModalBtn" title="Tenant Move-Out Clearance &amp; Deposit Refund Statement">
+            🚪 Move-Out / Vacate
+          </button>
           <button class="btn btn-primary" id="addNewUnitBtn">
             + Add New Unit
           </button>
@@ -2169,6 +2172,10 @@
 
             <button class="btn btn-secondary" id="settingsPrintPaymentsLedgerBtn" title="Open printable payment ledger and cash book">
               🖨️ Print Monthly Payment Ledger (PDF)
+            </button>
+
+            <button class="btn btn-secondary" id="settingsVacateBtn" title="Open Tenant Move-Out Clearance and Deposit Refund Statement">
+              🚪 Move-Out Clearance &amp; Deposit Statement
             </button>
 
             <hr style="border: 0; border-top: 1px solid var(--border-subtle); margin: 0.5rem 0;">
@@ -2770,6 +2777,170 @@
           </button>
           <button type="button" class="btn btn-primary" id="printLedgerActionBtn">
             🖨️ Print / Save as PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: TENANT MOVE-OUT CLEARANCE & DEPOSIT REFUND STATEMENT
+       ======================================================================== -->
+  <div class="modal-backdrop" id="vacateModal" role="dialog" aria-modal="true" aria-labelledby="vacateModalTitle">
+    <div class="modal-dialog" style="max-width: 920px; width: 96%;">
+      <div class="modal-header">
+        <div>
+          <h3 id="vacateModalTitle">🚪 Tenant Move-Out &amp; Deposit Settlement</h3>
+          <p class="small-meta">Final utility billing, meter handover, repairs deduction &amp; clearance certificate</p>
+        </div>
+        <button class="modal-close-btn" data-close-modal="vacateModal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="max-height: 82vh; overflow-y: auto;">
+        <!-- Top Customizer / Interactive Settlement Form (hidden in print) -->
+        <div class="no-print" style="background: var(--bg-surface-alt); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 1.15rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem;">
+            <strong style="font-size: 0.95rem;">⚙️ Move-Out Inspection &amp; Final Account Details</strong>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-sm btn-secondary" id="whatsappVacateBtn" title="Send settlement summary to tenant on WhatsApp">
+                💬 WhatsApp Summary
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" id="copyVacateBtn" title="Copy settlement text to clipboard">
+                📋 Copy Text
+              </button>
+              <button type="button" class="btn btn-sm btn-danger" id="finalizeMoveOutBtn" title="Mark unit as Vacant and clear tenant details">
+                🚪 Finalize Move-Out &amp; Mark Vacant
+              </button>
+            </div>
+          </div>
+
+          <!-- Section A: Unit & Tenant -->
+          <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
+            1. Unit &amp; Tenant Information
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.65rem; font-size: 0.85rem; margin-bottom: 1rem;">
+            <div class="form-group">
+              <label for="vacSelectUnit">Select Unit</label>
+              <select id="vacSelectUnit" class="form-select"></select>
+            </div>
+            <div class="form-group">
+              <label for="vacVacateDate">Vacate Date</label>
+              <input type="date" id="vacVacateDate" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="vacTenantName">Tenant Name</label>
+              <input type="text" id="vacTenantName" class="form-input" placeholder="e.g. Alice Wambui">
+            </div>
+            <div class="form-group">
+              <label for="vacTenantId">National ID / Passport</label>
+              <input type="text" id="vacTenantId" class="form-input" placeholder="e.g. 28475910">
+            </div>
+            <div class="form-group">
+              <label for="vacTenantPhone">Tenant Phone</label>
+              <input type="tel" id="vacTenantPhone" class="form-input" placeholder="e.g. 0722 000 111">
+            </div>
+            <div class="form-group">
+              <label for="vacRefundPhone">Refund M-Pesa Phone</label>
+              <input type="tel" id="vacRefundPhone" class="form-input" placeholder="e.g. 0722 000 111">
+            </div>
+          </div>
+
+          <!-- Section B: Security Deposit & Arrears -->
+          <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
+            2. Deposit Held &amp; Rent Arrears
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.65rem; font-size: 0.85rem; margin-bottom: 1rem;">
+            <div class="form-group">
+              <label for="vacDepositHeld">Security Deposit Held (KES)</label>
+              <input type="number" id="vacDepositHeld" class="form-input" min="0" step="100" placeholder="0">
+              <span class="small-meta" style="font-size: 0.75rem;">Refundable deposit paid upon move-in</span>
+            </div>
+            <div class="form-group">
+              <label for="vacArrears">Unpaid Rent / Arrears (KES)</label>
+              <input type="number" id="vacArrears" class="form-input" min="0" step="50" placeholder="0">
+              <span class="small-meta" style="font-size: 0.75rem;">Current outstanding rent balance</span>
+            </div>
+          </div>
+
+          <!-- Section C: Final Utility Meter Handover -->
+          <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
+            3. Final Utility Meter Readings &amp; Consumption
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.65rem; font-size: 0.85rem; margin-bottom: 1rem; background: var(--bg-surface); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px dashed var(--border-main);">
+            <div class="form-group">
+              <label for="vacWaterPrev">Water: Prev (Units)</label>
+              <input type="number" id="vacWaterPrev" class="form-input" min="0" step="0.1" value="0">
+            </div>
+            <div class="form-group">
+              <label for="vacWaterFinal">Water: Final (Units)</label>
+              <input type="number" id="vacWaterFinal" class="form-input" min="0" step="0.1" value="0">
+            </div>
+            <div class="form-group">
+              <label for="vacWaterRate">Water Rate (KES/unit)</label>
+              <input type="number" id="vacWaterRate" class="form-input" min="0" step="10" value="150">
+            </div>
+            <div class="form-group">
+              <label for="vacPowerPrev">Power: Prev (kWh)</label>
+              <input type="number" id="vacPowerPrev" class="form-input" min="0" step="0.1" value="0">
+            </div>
+            <div class="form-group">
+              <label for="vacPowerFinal">Power: Final (kWh)</label>
+              <input type="number" id="vacPowerFinal" class="form-input" min="0" step="0.1" value="0">
+            </div>
+            <div class="form-group">
+              <label for="vacPowerRate">Power Rate (KES/kWh)</label>
+              <input type="number" id="vacPowerRate" class="form-input" min="0" step="5" value="30">
+            </div>
+          </div>
+
+          <!-- Section D: Repairs & Cleaning Deductions -->
+          <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
+            4. Itemized Repairs &amp; Cleaning Deductions
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.65rem; font-size: 0.85rem; margin-bottom: 1rem;">
+            <div class="form-group">
+              <label for="vacDeductCleaning">Deep Cleaning (KES)</label>
+              <input type="number" id="vacDeductCleaning" class="form-input" min="0" step="100" value="0">
+            </div>
+            <div class="form-group">
+              <label for="vacDeductPainting">Wall Repainting (KES)</label>
+              <input type="number" id="vacDeductPainting" class="form-input" min="0" step="100" value="0">
+            </div>
+            <div class="form-group">
+              <label for="vacDeductRepairs">Damages / Fixtures (KES)</label>
+              <input type="number" id="vacDeductRepairs" class="form-input" min="0" step="100" value="0">
+            </div>
+            <div class="form-group">
+              <label for="vacDeductKeys">Key / Lock Replacement (KES)</label>
+              <input type="number" id="vacDeductKeys" class="form-input" min="0" step="100" value="0">
+            </div>
+            <div class="form-group" style="grid-column: span 2;">
+              <label for="vacDeductOtherDesc">Other Deduction Description</label>
+              <input type="text" id="vacDeductOtherDesc" class="form-input" placeholder="e.g. Window glass replacement">
+            </div>
+            <div class="form-group">
+              <label for="vacDeductOther">Other Amount (KES)</label>
+              <input type="number" id="vacDeductOther" class="form-input" min="0" step="100" value="0">
+            </div>
+          </div>
+
+          <!-- Live Dynamic Settlement Banner -->
+          <div id="vacSettlementBanner" style="padding: 0.85rem 1rem; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: #eef3ef; border: 1px solid #c2dbcd;">
+            <!-- Populated dynamically by updateVacatePreview() -->
+          </div>
+        </div>
+
+        <!-- Printable Document Area -->
+        <div id="vacatePreviewContainer" class="printable-area">
+          <!-- Populated dynamically by updateVacatePreview() -->
+        </div>
+      </div>
+
+      <div class="modal-footer no-print">
+        <button type="button" class="btn btn-secondary" data-close-modal="vacateModal">Close</button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="btn btn-primary" id="printVacateStatementBtn">
+            🖨️ Print / Save Clearance Certificate (PDF)
           </button>
         </div>
       </div>
@@ -3914,6 +4085,482 @@
         document.getElementById('printablePaymentLedgerArea').innerHTML = html;
       }
 
+      // --- TENANT MOVE-OUT & DEPOSIT SETTLEMENT HELPERS ---
+      function handleOpenVacate(unitId = '') {
+        const select = document.getElementById('vacSelectUnit');
+        let opts = '';
+        const occupied = appState.units.filter(u => !u.isVacant);
+        const vacant = appState.units.filter(u => u.isVacant);
+
+        if (occupied.length > 0) {
+          opts += '<optgroup label="Occupied Units">';
+          occupied.forEach(u => {
+            opts += `<option value="${u.id}">${escapeHTML(u.name)} (${escapeHTML(u.tenantName || 'Occupied')})</option>`;
+          });
+          opts += '</optgroup>';
+        }
+
+        if (vacant.length > 0) {
+          opts += '<optgroup label="Vacant Units">';
+          vacant.forEach(u => {
+            opts += `<option value="${u.id}">${escapeHTML(u.name)} (Vacant)</option>`;
+          });
+          opts += '</optgroup>';
+        }
+
+        select.innerHTML = opts;
+
+        if (unitId) {
+          select.value = unitId;
+        } else if (occupied.length > 0) {
+          select.value = occupied[0].id;
+        } else if (appState.units.length > 0) {
+          select.value = appState.units[0].id;
+        }
+
+        const todayStr = new Date().toISOString().substring(0, 10);
+        const dateInput = document.getElementById('vacVacateDate');
+        if (dateInput && !dateInput.value) dateInput.value = todayStr;
+
+        loadVacateFieldsFromUnit(select.value);
+        updateVacatePreview();
+        openModal('vacateModal');
+      }
+
+      function loadVacateFieldsFromUnit(unitId) {
+        const unit = appState.units.find(u => u.id === unitId);
+        const todayStr = new Date().toISOString().substring(0, 10);
+
+        if (!unit) return;
+
+        document.getElementById('vacTenantName').value = unit.tenantName || '';
+        document.getElementById('vacTenantId').value = unit.tenantIdNumber || '';
+        document.getElementById('vacTenantPhone').value = unit.tenantPhone || '';
+        document.getElementById('vacRefundPhone').value = unit.tenantPhone || '';
+
+        // Security Deposit
+        const deposit = Number(unit.depositAmount) || Number(unit.monthlyRent) || 0;
+        document.getElementById('vacDepositHeld').value = deposit;
+
+        // Arrears
+        const fin = calculateUnitFinancials(unit, activeMonth);
+        const arrears = fin.closingBalance > 0 ? fin.closingBalance : 0;
+        document.getElementById('vacArrears').value = arrears;
+
+        // Reset utility meters & prefill water previous from last bill
+        const unitWaterBills = appState.bills.filter(b => b.unitId === unit.id && (b.type || '').toLowerCase() === 'water');
+        let lastReading = 0;
+        if (unitWaterBills.length > 0) {
+          unitWaterBills.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+          lastReading = Number(unitWaterBills[0].finalReading) || Number(unitWaterBills[0].units) || 0;
+        }
+        document.getElementById('vacWaterPrev').value = lastReading;
+        document.getElementById('vacWaterFinal').value = lastReading;
+        document.getElementById('vacWaterRate').value = 150;
+
+        document.getElementById('vacPowerPrev').value = 0;
+        document.getElementById('vacPowerFinal').value = 0;
+        document.getElementById('vacPowerRate').value = 30;
+
+        // Reset deductions
+        document.getElementById('vacDeductCleaning').value = 0;
+        document.getElementById('vacDeductPainting').value = 0;
+        document.getElementById('vacDeductRepairs').value = 0;
+        document.getElementById('vacDeductKeys').value = 0;
+        document.getElementById('vacDeductOtherDesc').value = '';
+        document.getElementById('vacDeductOther').value = 0;
+      }
+
+      function calculateVacateSettlement() {
+        const depositHeld = Number(document.getElementById('vacDepositHeld').value) || 0;
+        const arrears = Number(document.getElementById('vacArrears').value) || 0;
+
+        // Water
+        const waterPrev = Number(document.getElementById('vacWaterPrev').value) || 0;
+        const waterFinal = Number(document.getElementById('vacWaterFinal').value) || 0;
+        const waterRate = Number(document.getElementById('vacWaterRate').value) || 0;
+        const waterUnits = Math.max(0, waterFinal - waterPrev);
+        const waterTotal = Math.round(waterUnits * waterRate);
+
+        // Power
+        const powerPrev = Number(document.getElementById('vacPowerPrev').value) || 0;
+        const powerFinal = Number(document.getElementById('vacPowerFinal').value) || 0;
+        const powerRate = Number(document.getElementById('vacPowerRate').value) || 0;
+        const powerUnits = Math.max(0, powerFinal - powerPrev);
+        const powerTotal = Math.round(powerUnits * powerRate);
+
+        // Deductions
+        const cleaning = Number(document.getElementById('vacDeductCleaning').value) || 0;
+        const painting = Number(document.getElementById('vacDeductPainting').value) || 0;
+        const repairs = Number(document.getElementById('vacDeductRepairs').value) || 0;
+        const keys = Number(document.getElementById('vacDeductKeys').value) || 0;
+        const otherDesc = document.getElementById('vacDeductOtherDesc').value.trim();
+        const other = Number(document.getElementById('vacDeductOther').value) || 0;
+
+        const totalRepairs = cleaning + painting + repairs + keys + other;
+        const totalUtilities = waterTotal + powerTotal;
+        const totalDeductions = arrears + totalUtilities + totalRepairs;
+        const netBalance = depositHeld - totalDeductions;
+
+        return {
+          depositHeld,
+          arrears,
+          waterPrev,
+          waterFinal,
+          waterRate,
+          waterUnits,
+          waterTotal,
+          powerPrev,
+          powerFinal,
+          powerRate,
+          powerUnits,
+          powerTotal,
+          totalUtilities,
+          cleaning,
+          painting,
+          repairs,
+          keys,
+          otherDesc,
+          other,
+          totalRepairs,
+          totalDeductions,
+          netBalance,
+          isRefund: netBalance > 0,
+          isOwed: netBalance < 0,
+          isZero: netBalance === 0
+        };
+      }
+
+      function updateVacatePreview() {
+        const unitId = document.getElementById('vacSelectUnit').value;
+        const unit = appState.units.find(u => u.id === unitId);
+        const prop = appState.property || {};
+
+        const vacateDate = document.getElementById('vacVacateDate').value || new Date().toISOString().substring(0, 10);
+        const tenantName = document.getElementById('vacTenantName').value.trim() || (unit ? unit.tenantName : '') || 'Tenant';
+        const tenantId = document.getElementById('vacTenantId').value.trim() || (unit ? unit.tenantIdNumber : '') || 'N/A';
+        const tenantPhone = document.getElementById('vacTenantPhone').value.trim() || (unit ? unit.tenantPhone : '') || 'N/A';
+        const refundPhone = document.getElementById('vacRefundPhone').value.trim() || tenantPhone;
+
+        const propName = prop.name || 'Rental Premises';
+        const landlordName = prop.landlordName || 'Landlord / Agent';
+        const landlordPhone = prop.phone || 'N/A';
+        const unitName = unit ? unit.name : 'Unknown';
+
+        const s = calculateVacateSettlement();
+
+        // 1. Update live banner
+        const banner = document.getElementById('vacSettlementBanner');
+        let statusBadge = '';
+        if (s.isRefund) {
+          statusBadge = `<span style="background: #047857; color: white; padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); font-weight: 700;">🟢 REFUND DUE TO TENANT: KES ${s.netBalance.toLocaleString('en-KE')}</span>`;
+        } else if (s.isOwed) {
+          statusBadge = `<span style="background: #b91c1c; color: white; padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); font-weight: 700;">🔴 TENANT OWES BALANCE: KES ${Math.abs(s.netBalance).toLocaleString('en-KE')}</span>`;
+        } else {
+          statusBadge = `<span style="background: #374151; color: white; padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); font-weight: 700;">⚪ ACCOUNT FULLY CLEARED (KES 0)</span>`;
+        }
+
+        banner.innerHTML = `
+          <div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">Deposit: <strong>KES ${s.depositHeld.toLocaleString('en-KE')}</strong> &bull; Total Deductions: <strong>KES ${s.totalDeductions.toLocaleString('en-KE')}</strong></div>
+            <div style="font-size: 0.8rem; color: var(--text-dim);">Utilities: KES ${s.totalUtilities.toLocaleString('en-KE')} | Repairs &amp; Cleaning: KES ${s.totalRepairs.toLocaleString('en-KE')} | Arrears: KES ${s.arrears.toLocaleString('en-KE')}</div>
+          </div>
+          <div>${statusBadge}</div>
+        `;
+
+        // 2. Render Printable Clearance Certificate
+        const certRef = `MOV-${vacateDate.replace(/-/g, '')}-${unitName.replace(/[^a-zA-Z0-9]/g, '')}`;
+        const container = document.getElementById('vacatePreviewContainer');
+
+        let deductionsRowsHtml = '';
+        if (s.arrears > 0) {
+          deductionsRowsHtml += `<tr><td style="padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb;">Unpaid Rent &amp; Arrears</td><td style="text-align: right; padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb; font-family: monospace; color: #b91c1c;">(KES ${s.arrears.toLocaleString('en-KE')})</td></tr>`;
+        }
+        if (s.waterTotal > 0) {
+          deductionsRowsHtml += `<tr><td style="padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb;">Final Water Bill (${s.waterUnits} units @ KES ${s.waterRate}/unit &bull; Readings: ${s.waterPrev} &rarr; ${s.waterFinal})</td><td style="text-align: right; padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb; font-family: monospace; color: #b91c1c;">(KES ${s.waterTotal.toLocaleString('en-KE')})</td></tr>`;
+        }
+        if (s.powerTotal > 0) {
+          deductionsRowsHtml += `<tr><td style="padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb;">Final Electricity Bill (${s.powerUnits} kWh @ KES ${s.powerRate}/kWh &bull; Readings: ${s.powerPrev} &rarr; ${s.powerFinal})</td><td style="text-align: right; padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb; font-family: monospace; color: #b91c1c;">(KES ${s.powerTotal.toLocaleString('en-KE')})</td></tr>`;
+        }
+        if (s.cleaning > 0) {
+          deductionsRowsHtml += `<tr><td style="padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb;">Deep Cleaning &amp; Waste Disposal</td><td style="text-align: right; padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb; font-family: monospace; color: #b91c1c;">(KES ${s.cleaning.toLocaleString('en-KE')})</td></tr>`;
+        }
+        if (s.painting > 0) {
+          deductionsRowsHtml += `<tr><td style="padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb;">Wall Repainting &amp; Patching</td><td style="text-align: right; padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb; font-family: monospace; color: #b91c1c;">(KES ${s.painting.toLocaleString('en-KE')})</td></tr>`;
+        }
+        if (s.repairs > 0) {
+          deductionsRowsHtml += `<tr><td style="padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb;">Damages &amp; Fixtures Repair</td><td style="text-align: right; padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb; font-family: monospace; color: #b91c1c;">(KES ${s.repairs.toLocaleString('en-KE')})</td></tr>`;
+        }
+        if (s.keys > 0) {
+          deductionsRowsHtml += `<tr><td style="padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb;">Lock &amp; Key Replacement</td><td style="text-align: right; padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb; font-family: monospace; color: #b91c1c;">(KES ${s.keys.toLocaleString('en-KE')})</td></tr>`;
+        }
+        if (s.other > 0) {
+          const desc = s.otherDesc || 'Other Damage / Deductions';
+          deductionsRowsHtml += `<tr><td style="padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb;">${escapeHTML(desc)}</td><td style="text-align: right; padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb; font-family: monospace; color: #b91c1c;">(KES ${s.other.toLocaleString('en-KE')})</td></tr>`;
+        }
+
+        if (!deductionsRowsHtml) {
+          deductionsRowsHtml = `<tr><td colspan="2" style="padding: 0.4rem 0.6rem; border-bottom: 1px solid #e5e7eb; color: #047857; font-style: italic;">No deductions or damages assessed &bull; Full deposit eligible for refund</td></tr>`;
+        }
+
+        let netResultText = '';
+        let netResultColor = '#111827';
+        if (s.isRefund) {
+          netResultText = `NET REFUND DUE TO TENANT: KES ${s.netBalance.toLocaleString('en-KE')}`;
+          netResultColor = '#047857';
+        } else if (s.isOwed) {
+          netResultText = `NET AMOUNT OWED BY TENANT: KES ${Math.abs(s.netBalance).toLocaleString('en-KE')}`;
+          netResultColor = '#b91c1c';
+        } else {
+          netResultText = `FINAL SETTLEMENT: KES 0 (FULLY CLEARED)`;
+          netResultColor = '#374151';
+        }
+
+        container.innerHTML = `
+          <div style="background: #ffffff; color: #111827; padding: 2rem; border-radius: var(--radius-md); border: 2px solid #16382c; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.5; font-size: 0.9rem;">
+            <!-- Document Header -->
+            <div style="text-align: center; border-bottom: 2px solid #16382c; padding-bottom: 1rem; margin-bottom: 1.25rem;">
+              <div style="font-size: 1.8rem; margin-bottom: 0.25rem;">🇰🇪</div>
+              <div style="font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: #53645b; font-weight: 700;">Republic of Kenya &bull; Tenancy Management</div>
+              <h2 style="margin: 0.35rem 0; font-size: 1.35rem; color: #16382c; text-transform: uppercase; letter-spacing: 0.04em;">Tenant Move-Out Clearance &amp; Deposit Refund Statement</h2>
+              <div style="font-size: 0.8rem; color: #53645b;">Official Handover, Meter Verification &amp; Final Account Clearance</div>
+            </div>
+
+            <!-- Meta Reference Block -->
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; font-size: 0.8rem; margin-bottom: 1.25rem; background: #f9fafb; padding: 0.6rem 0.85rem; border-radius: 4px; border: 1px solid #e5e7eb;">
+              <div><strong>CERTIFICATE REF:</strong> <span style="font-family: monospace;">${escapeHTML(certRef)}</span></div>
+              <div><strong>VACATE DATE:</strong> ${formatDateKE(vacateDate)}</div>
+              <div><strong>DATE ISSUED:</strong> ${formatDateKE(new Date().toISOString().substring(0, 10))}</div>
+            </div>
+
+            <!-- Parties Details Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; font-size: 0.85rem;">
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 0.75rem;">
+                <div style="font-weight: 700; color: #16382c; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.25rem; margin-bottom: 0.4rem; text-transform: uppercase; font-size: 0.75rem;">Property &amp; Landlord / Agent</div>
+                <div><strong>Premises:</strong> ${escapeHTML(propName)}</div>
+                <div><strong>Unit Number:</strong> ${escapeHTML(unitName)}</div>
+                <div><strong>Landlord / Agent:</strong> ${escapeHTML(landlordName)}</div>
+                <div><strong>Contact Phone:</strong> ${escapeHTML(landlordPhone)}</div>
+              </div>
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 0.75rem;">
+                <div style="font-weight: 700; color: #16382c; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.25rem; margin-bottom: 0.4rem; text-transform: uppercase; font-size: 0.75rem;">Vacating Tenant Details</div>
+                <div><strong>Tenant Name:</strong> ${escapeHTML(tenantName)}</div>
+                <div><strong>National ID / Passport:</strong> ${escapeHTML(tenantId)}</div>
+                <div><strong>Contact Phone:</strong> ${escapeHTML(tenantPhone)}</div>
+                <div><strong>Refund M-Pesa Phone:</strong> ${escapeHTML(refundPhone)}</div>
+              </div>
+            </div>
+
+            <!-- Final Utility Meter Handover Table -->
+            <div style="margin-bottom: 1.25rem;">
+              <div style="font-weight: 700; color: #16382c; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.4rem; letter-spacing: 0.04em;">
+                1. Final Utility Meter Readings &amp; Consumption Handover
+              </div>
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.825rem; border: 1px solid #e5e7eb;">
+                <thead>
+                  <tr style="background: #f3f4f6; text-align: left;">
+                    <th style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb;">Utility Service</th>
+                    <th style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right;">Previous Reading</th>
+                    <th style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right;">Final Reading</th>
+                    <th style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right;">Consumption</th>
+                    <th style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right;">Tariff Rate</th>
+                    <th style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right;">Amount Payable</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; font-weight: 600;">Water Meter</td>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right; font-family: monospace;">${s.waterPrev}</td>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right; font-family: monospace;">${s.waterFinal}</td>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 600;">${s.waterUnits} units</td>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right; font-family: monospace;">KES ${s.waterRate}/unit</td>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 600;">KES ${s.waterTotal.toLocaleString('en-KE')}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; font-weight: 600;">Electricity / Token</td>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right; font-family: monospace;">${s.powerPrev}</td>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right; font-family: monospace;">${s.powerFinal}</td>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 600;">${s.powerUnits} kWh</td>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right; font-family: monospace;">KES ${s.powerRate}/kWh</td>
+                    <td style="padding: 0.4rem 0.6rem; border: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 600;">KES ${s.powerTotal.toLocaleString('en-KE')}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Financial Settlement Accounting Table -->
+            <div style="margin-bottom: 1.25rem;">
+              <div style="font-weight: 700; color: #16382c; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.4rem; letter-spacing: 0.04em;">
+                2. Deposit &amp; Final Account Settlement Breakdown
+              </div>
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; border: 1px solid #e5e7eb;">
+                <thead>
+                  <tr style="background: #16382c; color: #ffffff; text-align: left;">
+                    <th style="padding: 0.45rem 0.6rem;">Item Description</th>
+                    <th style="padding: 0.45rem 0.6rem; text-align: right;">Amount (KES)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="background: #f0fdf4;">
+                    <td style="padding: 0.45rem 0.6rem; border-bottom: 1px solid #e5e7eb; font-weight: 700; color: #166534;">Security Deposit Held (Refundable Credit)</td>
+                    <td style="padding: 0.45rem 0.6rem; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 700; font-family: monospace; color: #166534;">+ KES ${s.depositHeld.toLocaleString('en-KE')}</td>
+                  </tr>
+                  ${deductionsRowsHtml}
+                  <tr style="background: #f9fafb; font-weight: 600;">
+                    <td style="padding: 0.45rem 0.6rem; border-bottom: 2px solid #16382c;">Total Assessed Deductions &amp; Charges</td>
+                    <td style="padding: 0.45rem 0.6rem; border-bottom: 2px solid #16382c; text-align: right; font-family: monospace; color: #b91c1c;">- KES ${s.totalDeductions.toLocaleString('en-KE')}</td>
+                  </tr>
+                  <tr style="background: #ffffff;">
+                    <td style="padding: 0.65rem 0.6rem; font-weight: 800; font-size: 1rem; color: ${netResultColor}; text-transform: uppercase;">
+                      ${escapeHTML(netResultText)}
+                    </td>
+                    <td style="padding: 0.65rem 0.6rem; text-align: right; font-weight: 800; font-size: 1.15rem; font-family: monospace; color: ${netResultColor};">
+                      KES ${Math.abs(s.netBalance).toLocaleString('en-KE')}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Clearance Declaration & Terms -->
+            <div style="background: #fdfbf7; border: 1px solid #ded8ca; border-radius: 4px; padding: 0.75rem; margin-bottom: 1.5rem; font-size: 0.8rem; line-height: 1.5; color: #2c3e35;">
+              <strong style="text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.25rem;">Handover &amp; Release Declaration:</strong>
+              This clearance certificate confirms that <strong>Unit ${escapeHTML(unitName)}</strong> has been formally surrendered by the Tenant. All door and padlock keys have been handed over, and the premises inspected for damages. 
+              ${s.isRefund ? `The Net Refund of <strong>KES ${s.netBalance.toLocaleString('en-KE')}</strong> shall be disbursed to the tenant's M-Pesa phone <strong>${escapeHTML(refundPhone)}</strong> within agreed timelines.` : s.isOwed ? `The Tenant acknowledges the outstanding deficit of <strong>KES ${Math.abs(s.netBalance).toLocaleString('en-KE')}</strong> and agrees to clear it immediately via M-Pesa.` : 'All accounts are cleared in full.'}
+              Upon fulfillment of the financial settlement above, both parties mutually release and discharge each other from any further obligations or claims arising under the tenancy.
+            </div>
+
+            <!-- Dual Signatures Block -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1.5rem; padding-top: 0.5rem;">
+              <div>
+                <div style="border-bottom: 1px solid #000000; height: 35px; margin-bottom: 0.25rem;"></div>
+                <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Landlord / Managing Agent Signature</div>
+                <div style="font-size: 0.75rem; color: #53645b;">Name: ${escapeHTML(landlordName)} &bull; Date: ${formatDateKE(new Date().toISOString().substring(0, 10))}</div>
+              </div>
+              <div>
+                <div style="border-bottom: 1px solid #000000; height: 35px; margin-bottom: 0.25rem;"></div>
+                <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Vacating Tenant Signature</div>
+                <div style="font-size: 0.75rem; color: #53645b;">Name: ${escapeHTML(tenantName)} &bull; ID: ${escapeHTML(tenantId)} &bull; Date: ${formatDateKE(vacateDate)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function generateVacateWhatsAppText() {
+        const unitId = document.getElementById('vacSelectUnit').value;
+        const unit = appState.units.find(u => u.id === unitId);
+        const prop = appState.property || {};
+
+        const vacateDate = document.getElementById('vacVacateDate').value || new Date().toISOString().substring(0, 10);
+        const tenantName = document.getElementById('vacTenantName').value.trim() || (unit ? unit.tenantName : '') || 'Tenant';
+        const refundPhone = document.getElementById('vacRefundPhone').value.trim() || 'N/A';
+        const propName = prop.name || 'Rental Premises';
+        const unitName = unit ? unit.name : 'Unknown';
+
+        const s = calculateVacateSettlement();
+
+        let msg = `*MOVE-OUT SETTLEMENT & CLEARANCE CERTIFICATE*\n`;
+        msg += `Property: *${propName}*\n`;
+        msg += `Unit: *${unitName}*\n`;
+        msg += `Tenant: *${tenantName}*\n`;
+        msg += `Vacate Date: *${formatDateKE(vacateDate)}*\n`;
+        msg += `--------------------------------------\n`;
+        msg += `*Security Deposit Held:* KES ${s.depositHeld.toLocaleString('en-KE')}\n\n`;
+
+        msg += `*DEDUCTIONS & FINAL CHARGES:*\n`;
+        if (s.arrears > 0) msg += `• Rent Arrears: KES ${s.arrears.toLocaleString('en-KE')}\n`;
+        if (s.waterTotal > 0) msg += `• Final Water (${s.waterUnits} units @ KES ${s.waterRate}): KES ${s.waterTotal.toLocaleString('en-KE')}\n`;
+        if (s.powerTotal > 0) msg += `• Final Electricity (${s.powerUnits} kWh @ KES ${s.powerRate}): KES ${s.powerTotal.toLocaleString('en-KE')}\n`;
+        if (s.cleaning > 0) msg += `• Cleaning & Waste: KES ${s.cleaning.toLocaleString('en-KE')}\n`;
+        if (s.painting > 0) msg += `• Wall Repainting: KES ${s.painting.toLocaleString('en-KE')}\n`;
+        if (s.repairs > 0) msg += `• Damages / Repairs: KES ${s.repairs.toLocaleString('en-KE')}\n`;
+        if (s.keys > 0) msg += `• Key Replacement: KES ${s.keys.toLocaleString('en-KE')}\n`;
+        if (s.other > 0) msg += `• ${s.otherDesc || 'Other'}: KES ${s.other.toLocaleString('en-KE')}\n`;
+        if (s.totalDeductions === 0) msg += `• None (Nil deductions)\n`;
+
+        msg += `--------------------------------------\n`;
+        msg += `*Total Deductions:* KES ${s.totalDeductions.toLocaleString('en-KE')}\n`;
+
+        if (s.isRefund) {
+          msg += `*🟢 NET REFUND DUE TO TENANT: KES ${s.netBalance.toLocaleString('en-KE')}*\n`;
+          msg += `Refund M-Pesa Phone: *${refundPhone}*\n`;
+        } else if (s.isOwed) {
+          msg += `*🔴 NET AMOUNT OWED TO LANDLORD: KES ${Math.abs(s.netBalance).toLocaleString('en-KE')}*\n`;
+          if (prop.paybillNumber) msg += `Paybill: *${prop.paybillNumber}* (Acc: *${unitName}*)\n`;
+          else if (prop.tillNumber) msg += `Till Number: *${prop.tillNumber}*\n`;
+        } else {
+          msg += `*⚪ ACCOUNT FULLY CLEARED (KES 0)*\n`;
+        }
+
+        msg += `--------------------------------------\n`;
+        msg += `Thank you for your tenancy at ${propName}. Wishing you the best in your new home!\n`;
+        msg += `_${prop.landlordName || 'Landlord'}_`;
+
+        return msg;
+      }
+
+      function sendVacateWhatsApp() {
+        const text = generateVacateWhatsAppText();
+        const tenantPhone = document.getElementById('vacTenantPhone').value.trim();
+        const cleanPhone = tenantPhone.replace(/[^0-9]/g, '');
+
+        let waUrl = 'https://wa.me/';
+        if (cleanPhone) {
+          let intlPhone = cleanPhone;
+          if (intlPhone.startsWith('0')) intlPhone = '254' + intlPhone.substring(1);
+          waUrl += intlPhone;
+        }
+        waUrl += '?text=' + encodeURIComponent(text.replace(/\\n/g, '\n'));
+        window.open(waUrl, '_blank');
+      }
+
+      function copyVacateStatement() {
+        const text = generateVacateWhatsAppText().replace(/\\n/g, '\n');
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('Move-out settlement summary copied to clipboard!');
+        }).catch(() => {
+          showToast('Could not copy automatically.', 'warning');
+        });
+      }
+
+      function handleFinalizeMoveOut() {
+        const unitId = document.getElementById('vacSelectUnit').value;
+        const unit = appState.units.find(u => u.id === unitId);
+
+        if (!unit) {
+          showToast('Please select a unit to vacate.', 'warning');
+          return;
+        }
+
+        const tenantName = unit.tenantName || 'Tenant';
+        const s = calculateVacateSettlement();
+        let settlementDesc = s.isRefund ? `Refund due: KES ${s.netBalance.toLocaleString('en-KE')}` : s.isOwed ? `Tenant owes: KES ${Math.abs(s.netBalance).toLocaleString('en-KE')}` : 'Account fully cleared';
+
+        showConfirm(
+          `Finalize Move-Out for Unit ${unit.name}?`,
+          `Are you sure you want to finalize move-out for ${tenantName} (Unit ${unit.name})? This will mark the unit as VACANT, archive the tenant details, and complete the settlement (${settlementDesc}).`,
+          () => {
+            // Archive tenant info in unit history note
+            const vacateDate = document.getElementById('vacVacateDate').value || new Date().toISOString().substring(0, 10);
+            const historyNote = `Vacated on ${vacateDate}: Former tenant ${tenantName} (${unit.tenantPhone || 'No phone'}). ${settlementDesc}.`;
+            unit.notes = unit.notes ? `${unit.notes} | ${historyNote}` : historyNote;
+
+            // Mark unit as vacant
+            unit.isVacant = true;
+            unit.tenantName = '';
+            unit.tenantPhone = '';
+            unit.tenantIdNumber = '';
+
+            saveState();
+            closeModal('vacateModal');
+            renderDashboard();
+            renderUnits();
+            showToast(`Unit ${unit.name} is now marked Vacant. Move-out settlement recorded!`);
+          }
+        );
+      }
+
       // --- RENDER VIEW 1: DASHBOARD ---
       function renderDashboard() {
         const metrics = getAggregateMetrics(activeMonth);
@@ -4278,6 +4925,9 @@
                   </button>
                   <button class="btn btn-sm btn-secondary view-agreement-btn" data-unit-id="${unit.id}" title="Generate Tenancy Agreement">
                     📜 Agreement
+                  </button>
+                  <button class="btn btn-sm btn-secondary open-vacate-btn" data-unit-id="${unit.id}" title="Move-Out Settlement &amp; Vacate Unit">
+                    🚪 Vacate
                   </button>
                 ` : `
                   <button class="btn btn-sm btn-secondary edit-unit-btn" data-unit-id="${unit.id}">
@@ -6434,6 +7084,59 @@
           });
         }
 
+        // Tenant Move-Out & Deposit Settlement Listeners
+        const openVacateBtn = document.getElementById('openVacateModalBtn');
+        if (openVacateBtn) {
+          openVacateBtn.addEventListener('click', () => handleOpenVacate());
+        }
+
+        const settingsVacateBtn = document.getElementById('settingsVacateBtn');
+        if (settingsVacateBtn) {
+          settingsVacateBtn.addEventListener('click', () => handleOpenVacate());
+        }
+
+        const vacUnitSelect = document.getElementById('vacSelectUnit');
+        if (vacUnitSelect) {
+          vacUnitSelect.addEventListener('change', () => {
+            loadVacateFieldsFromUnit(vacUnitSelect.value);
+            updateVacatePreview();
+          });
+        }
+
+        [
+          'vacVacateDate', 'vacTenantName', 'vacTenantId', 'vacTenantPhone', 'vacRefundPhone',
+          'vacDepositHeld', 'vacArrears', 'vacWaterPrev', 'vacWaterFinal', 'vacWaterRate',
+          'vacPowerPrev', 'vacPowerFinal', 'vacPowerRate',
+          'vacDeductCleaning', 'vacDeductPainting', 'vacDeductRepairs', 'vacDeductKeys',
+          'vacDeductOtherDesc', 'vacDeductOther'
+        ].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('input', updateVacatePreview);
+            el.addEventListener('change', updateVacatePreview);
+          }
+        });
+
+        const printVacateBtn = document.getElementById('printVacateStatementBtn');
+        if (printVacateBtn) {
+          printVacateBtn.addEventListener('click', () => window.print());
+        }
+
+        const copyVacateBtn = document.getElementById('copyVacateBtn');
+        if (copyVacateBtn) {
+          copyVacateBtn.addEventListener('click', copyVacateStatement);
+        }
+
+        const whatsappVacateBtn = document.getElementById('whatsappVacateBtn');
+        if (whatsappVacateBtn) {
+          whatsappVacateBtn.addEventListener('click', sendVacateWhatsApp);
+        }
+
+        const finalizeMoveOutBtn = document.getElementById('finalizeMoveOutBtn');
+        if (finalizeMoveOutBtn) {
+          finalizeMoveOutBtn.addEventListener('click', handleFinalizeMoveOut);
+        }
+
         // Printable Payment Ledger Listeners
         const printLedgerBtn = document.getElementById('openPrintPaymentsLedgerBtn');
         if (printLedgerBtn) {
@@ -7044,6 +7747,10 @@
 
         document.querySelectorAll('.view-agreement-btn').forEach(btn => {
           btn.addEventListener('click', () => handleOpenAgreement(btn.dataset.unitId));
+        });
+
+        document.querySelectorAll('.open-vacate-btn').forEach(btn => {
+          btn.addEventListener('click', () => handleOpenVacate(btn.dataset.unitId));
         });
       }
 
