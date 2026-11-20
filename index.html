@@ -1833,6 +1833,17 @@
                   📜 View Tenancy Agreement
                 </button>
               </div>
+
+              <!-- Tenant's Payment Receipts & History -->
+              <div style="margin-top: 1rem; border-top: 1px dashed var(--border-main); padding-top: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                  <strong style="font-size: 0.85rem;">🧾 Payment History &amp; Receipts</strong>
+                  <span class="small-meta" id="tenantReceiptsCount">0 payments</span>
+                </div>
+                <div id="tenantReceiptsList" style="display: flex; flex-direction: column; gap: 0.45rem; max-height: 220px; overflow-y: auto;">
+                  <!-- Filled via JavaScript -->
+                </div>
+              </div>
             </div>
           </div>
 
@@ -2364,6 +2375,32 @@
             </div>
           </div>
 
+          <!-- Meter Reading Calculator for Water & Electricity -->
+          <div id="meterCalculatorBox" style="background: var(--bg-surface-alt); border: 1px dashed var(--border-main); border-radius: var(--radius-sm); padding: 0.75rem; margin-bottom: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <strong style="font-size: 0.8125rem;">⚡ Meter Reading Calculator</strong>
+              <span class="small-meta" id="meterCalcCategoryLabel">Water Sub-Meter</span>
+            </div>
+            <div class="form-row" style="grid-template-columns: repeat(3, 1fr);">
+              <div class="form-group">
+                <label for="meterPrevReading" style="font-size: 0.75rem;">Previous Reading</label>
+                <input type="number" id="meterPrevReading" class="form-input" placeholder="e.g. 100" step="any">
+              </div>
+              <div class="form-group">
+                <label for="meterCurrReading" style="font-size: 0.75rem;">Current Reading</label>
+                <input type="number" id="meterCurrReading" class="form-input" placeholder="e.g. 115" step="any">
+              </div>
+              <div class="form-group">
+                <label for="meterRatePerUnit" style="font-size: 0.75rem;">Rate / Unit (KES)</label>
+                <input type="number" id="meterRatePerUnit" class="form-input" value="150" step="10">
+              </div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8125rem; margin-top: 0.35rem; padding-top: 0.35rem; border-top: 1px dashed var(--border-subtle);">
+              <span>Consumed: <strong id="meterUnitsConsumed" class="tabular-nums">0</strong> units</span>
+              <span>Total: <strong id="meterTotalCalculated" style="color: var(--brand-primary);" class="tabular-nums">KES 0</strong></span>
+            </div>
+          </div>
+
           <div class="form-group" id="groupBillAmount">
             <label for="inputBillAmount">Amount to Charge *</label>
             <div class="input-addon">
@@ -2543,6 +2580,19 @@
       </div>
       <div class="modal-body">
         <p class="small-meta">This message is pre-filled with the tenant's name, unit number, current arrears, and M-Pesa payment details.</p>
+
+        <!-- Message Tone & Language Selector -->
+        <div style="display: flex; gap: 0.35rem; margin: 0.75rem 0; border-bottom: 1px solid var(--border-main); padding-bottom: 0.5rem;">
+          <button type="button" class="btn btn-sm btn-primary reminder-lang-tab" data-lang="swahili">
+            🇰🇪 Kiswahili
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary reminder-lang-tab" data-lang="english">
+            🇬🇧 English
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary reminder-lang-tab" data-lang="sms">
+            📱 Short SMS
+          </button>
+        </div>
         
         <div class="form-group" style="margin-top: 0.5rem;">
           <label>Message Preview:</label>
@@ -4135,6 +4185,45 @@
         if (confDate && !confDate.value) {
           confDate.value = new Date().toISOString().split('T')[0];
         }
+
+        // Render payment history and official receipts for this verified unit
+        const receiptsListEl = document.getElementById('tenantReceiptsList');
+        const receiptsCountEl = document.getElementById('tenantReceiptsCount');
+        if (receiptsListEl) {
+          const unitPayments = appState.payments
+            .filter(p => p.unitId === unit.id)
+            .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+          if (receiptsCountEl) {
+            receiptsCountEl.textContent = `${unitPayments.length} payment${unitPayments.length === 1 ? '' : 's'}`;
+          }
+
+          if (unitPayments.length === 0) {
+            receiptsListEl.innerHTML = '<div class="small-meta" style="font-style: italic; padding: 0.5rem 0;">No payments recorded yet for this unit.</div>';
+          } else {
+            let rHtml = '';
+            unitPayments.slice(0, 6).forEach(p => {
+              rHtml += `
+                <div style="display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.8125rem;">
+                  <div>
+                    <div style="font-weight: 700; color: var(--settled);">${formatKES(p.amount)}</div>
+                    <div class="small-meta">${formatDateKE(p.date)} &bull; ${escapeHTML(p.mpesaCode || 'M-Pesa')}</div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-secondary tenant-receipt-btn" data-payment-id="${p.id}" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" title="View official printable rent receipt">
+                    🧾 Receipt
+                  </button>
+                </div>
+              `;
+            });
+            receiptsListEl.innerHTML = rHtml;
+
+            receiptsListEl.querySelectorAll('.tenant-receipt-btn').forEach(btn => {
+              btn.addEventListener('click', () => {
+                handleOpenReceipt(btn.dataset.paymentId);
+              });
+            });
+          }
+        }
       }
 
       // --- RENDER VIEW 6: SETTINGS ---
@@ -4526,6 +4615,29 @@
       }
 
       // --- BILL FORM HANDLERS ---
+      // --- METER READING CALCULATOR HELPERS ---
+      function updateMeterCalculation() {
+        const prev = Number(document.getElementById('meterPrevReading').value) || 0;
+        const curr = Number(document.getElementById('meterCurrReading').value) || 0;
+        const rate = Number(document.getElementById('meterRatePerUnit').value) || 0;
+        const cat = document.getElementById('selectBillCategory').value;
+
+        if (curr >= prev && prev > 0) {
+          const consumed = Math.round((curr - prev) * 10) / 10;
+          const total = Math.round(consumed * rate);
+          document.getElementById('meterUnitsConsumed').textContent = consumed;
+          document.getElementById('meterTotalCalculated').textContent = formatKES(total);
+          if (total > 0) {
+            document.getElementById('inputBillAmount').value = total;
+            const catLabel = cat === 'water' ? 'Water' : 'Power';
+            document.getElementById('inputBillDesc').value = `${catLabel} meter: ${prev} to ${curr} (${consumed} units @ KES ${rate})`;
+          }
+        } else {
+          document.getElementById('meterUnitsConsumed').textContent = '0';
+          document.getElementById('meterTotalCalculated').textContent = 'KES 0';
+        }
+      }
+
       function handleOpenAddBill(preselectedUnitId = '') {
         document.getElementById('billModalTitle').textContent = 'Record Unit Bill';
         document.getElementById('saveBillSubmitBtn').textContent = 'Save Bill';
@@ -5146,31 +5258,61 @@
         openModal('statementModal');
       }
 
-      // --- WHATSAPP REMINDER GENERATOR ---
+      // --- WHATSAPP REMINDER GENERATOR (MULTI-LANGUAGE) ---
       let currentReminderTarget = null;
+      let activeReminderUnitId = null;
+      let activeReminderLang = 'swahili';
 
-      function handleOpenReminder(unitId) {
-        const unit = appState.units.find(u => u.id === unitId);
-        if (!unit) return;
+      function generateReminderMessage(unit, lang = 'swahili') {
         const prop = appState.property || {};
         const fin = calculateUnitFinancials(unit, activeMonth);
-
         const tenantFirstName = (unit.tenantName || 'Tenant').split(' ')[0];
         const monthName = formatMonthName(activeMonth);
         const amountStr = formatKES(fin.closingBalance);
-        const mpesaNote = prop.mpesaInstructions ? `\nPayment details: ${prop.mpesaInstructions}` : '';
+        const payLink = `${window.location.origin}${window.location.pathname}?pay=${encodeURIComponent(unit.name || unit.id)}`;
+        const paybill = prop.paybillNumber || '522522';
+        const propName = prop.name || 'Rent Book';
 
-        let breakdownText = `Rent: ${formatKES(fin.monthRentCharged)}`;
-        if (fin.openingBalance > 0) breakdownText += `, Previous arrears: ${formatKES(fin.openingBalance)}`;
-        if (fin.monthBillsCharged > 0) breakdownText += `, Utilities: ${formatKES(fin.monthBillsCharged)}`;
+        let breakdown = `Kodi: ${formatKES(fin.monthRentCharged)}`;
+        if (fin.openingBalance > 0) breakdown += `, Malimbikizo ya awali: ${formatKES(fin.openingBalance)}`;
+        if (fin.monthBillsCharged > 0) breakdown += `, Bili: ${formatKES(fin.monthBillsCharged)}`;
 
-        const payLink = `${window.location.origin}${window.location.pathname}?unit=${encodeURIComponent(unit.id)}`;
-        const message = `Jambo ${tenantFirstName},\n\nThis is a friendly reminder from ${prop.name || 'Rent Book'} regarding Unit ${unit.name}.\n\nThe outstanding balance for ${monthName} is ${amountStr} (${breakdownText}).\n${mpesaNote}\n\n💳 Pay online & get instant receipt:\n${payLink}\n\nKindly remit at your earliest convenience. Thank you!`;
+        let breakdownEn = `Rent: ${formatKES(fin.monthRentCharged)}`;
+        if (fin.openingBalance > 0) breakdownEn += `, Previous arrears: ${formatKES(fin.openingBalance)}`;
+        if (fin.monthBillsCharged > 0) breakdownEn += `, Utilities: ${formatKES(fin.monthBillsCharged)}`;
 
+        if (lang === 'swahili') {
+          return `Hujambo ${tenantFirstName},\n\nHuu ni ukumbusho wa kirafiki kutoka ${propName} kuhusu Nyumba ${unit.name}.\n\nSalio lako linalodaiwa la mwezi wa ${monthName} ni ${amountStr} (${breakdown}).\n\nLipa kupitia Safaricom M-Pesa:\nPaybill: ${paybill}, Account: ${unit.name}\n\n💳 Angalia salio na upate stakabadhi papo hapo:\n${payLink}\n\nTafadhali fanya malipo mapema. Asante sana!`;
+        } else if (lang === 'sms') {
+          return `Kumbusho la Kodi (${propName}): Salio la Unit ${unit.name} ni ${amountStr}. Lipa kupitia Paybill ${paybill}, Acc: ${unit.name}. Stakabadhi: ${payLink}`;
+        } else {
+          return `Jambo ${tenantFirstName},\n\nThis is a friendly reminder from ${propName} regarding Unit ${unit.name}.\n\nThe outstanding balance for ${monthName} is ${amountStr} (${breakdownEn}).\n\nPayment via Safaricom M-Pesa:\nPaybill: ${paybill}, Account: ${unit.name}\n\n💳 Pay online & get instant receipt:\n${payLink}\n\nKindly remit at your earliest convenience. Thank you!`;
+        }
+      }
+
+      function handleOpenReminder(unitId, lang = 'swahili') {
+        const unit = appState.units.find(u => u.id === unitId);
+        if (!unit) return;
+
+        activeReminderUnitId = unitId;
+        activeReminderLang = lang;
+
+        const message = generateReminderMessage(unit, lang);
         currentReminderTarget = {
           phone: unit.tenantPhone || '',
           message
         };
+
+        // Update tabs styling
+        document.querySelectorAll('.reminder-lang-tab').forEach(tab => {
+          if (tab.dataset.lang === lang) {
+            tab.classList.add('btn-primary', 'active');
+            tab.classList.remove('btn-secondary');
+          } else {
+            tab.classList.remove('btn-primary', 'active');
+            tab.classList.add('btn-secondary');
+          }
+        });
 
         document.getElementById('reminderTextPreview').textContent = message;
         openModal('reminderModal');
@@ -5713,6 +5855,42 @@
           document.getElementById('onboardingCard').style.display = 'none';
         });
         document.getElementById('openAddUnitFromGuideBtn').addEventListener('click', handleOpenAddUnit);
+
+        // Reminder Language Switcher
+        document.querySelectorAll('.reminder-lang-tab').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const lang = btn.dataset.lang;
+            if (activeReminderUnitId) {
+              handleOpenReminder(activeReminderUnitId, lang);
+            }
+          });
+        });
+
+        // Meter Reading Calculator Event Listeners
+        ['meterPrevReading', 'meterCurrReading', 'meterRatePerUnit'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('input', updateMeterCalculation);
+            el.addEventListener('change', updateMeterCalculation);
+          }
+        });
+
+        const selectBillCat = document.getElementById('selectBillCategory');
+        if (selectBillCat) {
+          selectBillCat.addEventListener('change', () => {
+            const val = selectBillCat.value;
+            const meterBox = document.getElementById('meterCalculatorBox');
+            const lbl = document.getElementById('meterCalcCategoryLabel');
+            if (meterBox) {
+              if (val === 'water' || val === 'electricity') {
+                meterBox.style.display = 'block';
+                if (lbl) lbl.textContent = val === 'water' ? 'Water Sub-Meter' : 'Electricity Meter';
+              } else {
+                meterBox.style.display = 'none';
+              }
+            }
+          });
+        }
 
         // Quick Action triggers
         document.getElementById('dashRecordPaymentBtn').addEventListener('click', () => handleOpenAddPayment());
