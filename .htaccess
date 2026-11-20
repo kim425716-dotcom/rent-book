@@ -6,6 +6,12 @@
     Require all granted
     Header set Service-Worker-Allowed "/"
 </Files>
+<Files "mpesa_stk.php">
+    Require all granted
+</Files>
+<Files "mpesa_callback.php">
+    Require all granted
+</Files>
 <FilesMatch "\.(png|ico)$">
     Require all granted
 </FilesMatch>
@@ -70,8 +76,8 @@ Options -Indexes
     # Permissions Policy (Disable unneeded browser hardware features)
     Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
 
-    # Content Security Policy (Strict client sandbox)
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+    # Content Security Policy (Strict client sandbox with M-Pesa connect-src)
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://logictech.co.ke https://api.safaricom.co.ke https://sandbox.safaricom.co.ke; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
 
     # HTTP Strict Transport Security (HSTS)
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS

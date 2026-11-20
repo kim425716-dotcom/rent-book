@@ -2098,8 +2098,11 @@
           <!-- Channel 3: STK Push Simulator / Direct Trigger -->
           <div id="channelStk" class="payment-channel-pane" style="display: none;">
             <div style="background: #eaf6ef; border: 1px solid #a3e0c0; border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem; color: #1e704a;">
-              <h4 style="margin-bottom: 0.25rem; color: #1e704a;">⚡ Instant M-Pesa Prompt</h4>
-              <p class="small-meta" style="color: #2d6a54;">Enter your phone number to receive the prompt on your phone screen to enter PIN.</p>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; flex-wrap: wrap; gap: 0.5rem;">
+                <h4 style="margin: 0; color: #1e704a;">⚡ Instant M-Pesa STK Prompt</h4>
+                <div id="stkPortalModeBadge"></div>
+              </div>
+              <p class="small-meta" style="color: #2d6a54;">Enter your Safaricom phone number to receive an instant PIN prompt on your phone screen.</p>
               
               <div class="form-group" style="margin-top: 0.75rem;">
                 <label for="stkPhoneNumber" style="color: #1e704a;">M-Pesa Phone Number</label>
@@ -2280,6 +2283,98 @@
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- Safaricom M-Pesa Daraja STK Push Integration -->
+        <div class="unit-card" id="darajaSettingsCard">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <h3 style="margin: 0;">⚡ Safaricom M-Pesa Daraja API (STK Push)</h3>
+              <p class="small-meta">Connect your Safaricom Paybill or Till to dispatch live M-Pesa PIN prompts directly to tenant phones.</p>
+            </div>
+            <div id="darajaStatusBadge"></div>
+          </div>
+
+          <form id="darajaSettingsForm" style="display: flex; flex-direction: column; gap: 0.85rem;">
+            <!-- Enabled Toggle -->
+            <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--bg-surface-alt); border-radius: 6px; border: 1px solid var(--border-main);">
+              <input type="checkbox" id="settingDarajaEnabled" style="width: 1.1rem; height: 1.1rem; accent-color: var(--brand-primary); cursor: pointer;">
+              <div>
+                <label for="settingDarajaEnabled" style="font-weight: 600; font-size: 0.875rem; cursor: pointer; display: block; margin: 0;">
+                  Enable Live Safaricom Daraja STK Push
+                </label>
+                <span class="small-meta">When disabled, Rent Book operates in instant offline simulator mode.</span>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="settingDarajaEnv">Daraja Environment</label>
+                <select id="settingDarajaEnv" class="form-select">
+                  <option value="sandbox">Sandbox (Testing / Trial)</option>
+                  <option value="production">Production (Live Paybill / Till)</option>
+                </select>
+                <span class="field-hint">Use Sandbox for testing before going live.</span>
+              </div>
+
+              <div class="form-group">
+                <label for="settingDarajaType">Transaction Channel</label>
+                <select id="settingDarajaType" class="form-select">
+                  <option value="CustomerPayBillOnline">CustomerPayBillOnline (Paybill)</option>
+                  <option value="CustomerBuyGoodsOnline">CustomerBuyGoodsOnline (Till Number)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="settingDarajaShortcode">Business Shortcode (Paybill / Till) *</label>
+                <input type="text" id="settingDarajaShortcode" class="form-input tabular-nums" placeholder="e.g. 174379 or 522522">
+                <span class="field-hint">Sandbox test shortcode is 174379</span>
+              </div>
+
+              <div class="form-group">
+                <label for="settingDarajaPasskey">Lipa Na M-Pesa Online Passkey *</label>
+                <input type="password" id="settingDarajaPasskey" class="form-input" placeholder="Enter Daraja passkey" autocomplete="off">
+                <span class="field-hint">Generated in the Safaricom Daraja portal</span>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="settingDarajaKey">Consumer Key *</label>
+                <input type="password" id="settingDarajaKey" class="form-input" placeholder="Enter Daraja Consumer Key" autocomplete="off">
+              </div>
+
+              <div class="form-group">
+                <label for="settingDarajaSecret">Consumer Secret *</label>
+                <input type="password" id="settingDarajaSecret" class="form-input" placeholder="Enter Daraja Consumer Secret" autocomplete="off">
+              </div>
+            </div>
+
+            <!-- Auto Record Toggle -->
+            <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem; background: var(--bg-surface-tint); border-radius: 6px; border: 1px solid var(--border-main);">
+              <input type="checkbox" id="settingDarajaAutoRecord" checked style="width: 1rem; height: 1rem; accent-color: var(--brand-primary); cursor: pointer;">
+              <div>
+                <label for="settingDarajaAutoRecord" style="font-weight: 600; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                  Auto-Record Payment on Successful STK Push
+                </label>
+                <span class="small-meta">Automatically logs payment to ledger and clears tenant arrears once PIN is entered.</span>
+              </div>
+            </div>
+
+            <!-- Status & Test Message Box -->
+            <div id="darajaTestResultBox" style="display: none; padding: 0.65rem 0.85rem; border-radius: 4px; font-size: 0.85rem;"></div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem;">
+              <button type="submit" class="btn btn-primary">
+                💾 Save Daraja Credentials
+              </button>
+              <button type="button" class="btn btn-secondary" id="testDarajaConnectionBtn">
+                🔍 Test Daraja Connection
+              </button>
+            </div>
+          </form>
         </div>
 
         <!-- Late Rent Penalty & Grace Period Rules -->
@@ -3344,6 +3439,63 @@
   </div>
 
   <!-- ========================================================================
+       MODAL: SAFARICOM M-PESA STK PUSH LIVE WAITING PROMPT
+       ======================================================================== -->
+  <div class="modal-backdrop" id="stkWaitModal" role="dialog" aria-modal="true" aria-labelledby="stkWaitModalTitle">
+    <div class="modal-dialog" style="max-width: 480px; text-align: center;">
+      <div class="modal-header" style="justify-content: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.75rem;">
+        <h3 id="stkWaitModalTitle" style="color: #047857; margin: 0; display: flex; align-items: center; gap: 0.5rem; justify-content: center;">
+          <span>📱</span> Safaricom M-Pesa STK Push
+        </h3>
+      </div>
+
+      <div class="modal-body" style="padding: 1.5rem 1.25rem;">
+        <!-- Animated Phone & Pulse Icon -->
+        <div style="position: relative; width: 72px; height: 72px; margin: 0 auto 1.25rem; background: #ecfdf5; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #10b981;">
+          <span style="font-size: 2.2rem;" id="stkModalIcon">📲</span>
+        </div>
+
+        <h4 id="stkModalHeading" style="font-size: 1.15rem; margin-bottom: 0.5rem; color: #111827;">
+          Check Your Phone Screen
+        </h4>
+        <p id="stkModalSubheading" style="color: #4b5563; font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.25rem;">
+          A payment prompt of <strong id="stkModalAmount" style="color: #047857;">KES 0</strong> has been dispatched to <strong id="stkModalPhone" style="font-family: monospace;">07XXXXXXXX</strong>. Please unlock your phone and enter your secret M-Pesa PIN.
+        </p>
+
+        <!-- Live Countdown & Status Box -->
+        <div id="stkModalStatusBox" style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: var(--radius-sm); padding: 0.85rem; margin-bottom: 1rem; font-size: 0.85rem;">
+          <div id="stkModalSpinner" style="display: inline-block; margin-right: 0.5rem;">⏳</div>
+          <span id="stkModalStatusText" style="font-weight: 600; color: #1f2937;">Waiting for PIN entry on phone...</span>
+          <div style="font-size: 0.75rem; color: #6b7280; margin-top: 0.35rem;" id="stkModalCountdown">
+            Time remaining: 60s
+          </div>
+        </div>
+
+        <!-- Success Result Container (hidden until success) -->
+        <div id="stkModalSuccessBox" style="display: none; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1rem; text-align: left;">
+          <div style="font-weight: 700; color: #065f46; font-size: 0.95rem; margin-bottom: 0.35rem;">
+            ✅ Payment Approved &amp; Verified!
+          </div>
+          <div style="font-size: 0.85rem; color: #047857; line-height: 1.4;">
+            <div><strong>M-Pesa Code:</strong> <span id="stkSuccessMpesaCode" style="font-family: monospace; font-weight: 700;">-</span></div>
+            <div><strong>Amount Paid:</strong> <span id="stkSuccessAmount" style="font-family: monospace;">-</span></div>
+            <div><strong>Status:</strong> Successfully credited to unit account</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="justify-content: center; gap: 0.75rem;">
+        <button type="button" class="btn btn-secondary" id="stkCancelWaitBtn">
+          Cancel / Close
+        </button>
+        <button type="button" class="btn btn-primary" id="stkViewReceiptBtn" style="display: none; background: #047857; border-color: #047857;">
+          🧾 View Official Receipt
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
        MODAL 7: HOW THIS WORKS EXPLAINER
        ======================================================================== -->
   <div class="modal-backdrop" id="howItWorksModal" role="dialog" aria-modal="true" aria-labelledby="howItWorksModalTitle">
@@ -3460,6 +3612,16 @@
           base: 'rent',
           noticeClause: 'Rent is strictly due on or before the 5th of each month. Late accounts incur an administrative penalty of KES 500.'
         },
+        daraja: {
+          enabled: false,
+          env: 'sandbox',
+          consumerKey: '',
+          consumerSecret: '',
+          shortcode: '174379',
+          passkey: 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919',
+          type: 'CustomerPayBillOnline',
+          autoRecord: true
+        },
         hasSeenOnboarding: false
       };
 
@@ -3488,6 +3650,18 @@
                 value: 500,
                 base: 'rent',
                 noticeClause: 'Rent is strictly due on or before the 5th of each month. Late accounts incur an administrative penalty of KES 500.'
+              };
+            }
+            if (!appState.daraja) {
+              appState.daraja = {
+                enabled: false,
+                env: 'sandbox',
+                consumerKey: '',
+                consumerSecret: '',
+                shortcode: '174379',
+                passkey: 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919',
+                type: 'CustomerPayBillOnline',
+                autoRecord: true
               };
             }
           } else {
@@ -4513,6 +4687,347 @@
         `;
 
         document.getElementById('printablePaymentLedgerArea').innerHTML = html;
+      }
+
+      // --- SAFARICOM DARAJA STK PUSH ENGINE ---
+      function getDarajaConfig() {
+        if (!appState.daraja) {
+          appState.daraja = {
+            enabled: false,
+            env: 'sandbox',
+            consumerKey: '',
+            consumerSecret: '',
+            shortcode: '174379',
+            passkey: 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919',
+            type: 'CustomerPayBillOnline',
+            autoRecord: true
+          };
+        }
+        return appState.daraja;
+      }
+
+      function getDarajaEndpoint() {
+        return (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'https://logictech.co.ke/rentbook/mpesa_stk.php'
+          : 'mpesa_stk.php';
+      }
+
+      function renderDarajaSettings() {
+        const daraja = getDarajaConfig();
+        const enabledCheck = document.getElementById('settingDarajaEnabled');
+        const envSelect = document.getElementById('settingDarajaEnv');
+        const keyInput = document.getElementById('settingDarajaKey');
+        const secretInput = document.getElementById('settingDarajaSecret');
+        const shortcodeInput = document.getElementById('settingDarajaShortcode');
+        const passkeyInput = document.getElementById('settingDarajaPasskey');
+        const typeSelect = document.getElementById('settingDarajaType');
+        const autoCheck = document.getElementById('settingDarajaAutoRecord');
+        const badge = document.getElementById('darajaStatusBadge');
+        const portalBadge = document.getElementById('stkPortalModeBadge');
+
+        if (enabledCheck) enabledCheck.checked = Boolean(daraja.enabled);
+        if (envSelect) envSelect.value = daraja.env || 'sandbox';
+        if (keyInput) keyInput.value = daraja.consumerKey || '';
+        if (secretInput) secretInput.value = daraja.consumerSecret || '';
+        if (shortcodeInput) shortcodeInput.value = daraja.shortcode || '174379';
+        if (passkeyInput) passkeyInput.value = daraja.passkey || '';
+        if (typeSelect) typeSelect.value = daraja.type || 'CustomerPayBillOnline';
+        if (autoCheck) autoCheck.checked = Boolean(daraja.autoRecord !== false);
+
+        let badgeHtml = '';
+        let portalBadgeHtml = '';
+
+        if (daraja.enabled) {
+          if (daraja.env === 'production') {
+            badgeHtml = '<span style="background:#d1fae5;color:#065f46;padding:0.25rem 0.65rem;border-radius:999px;font-size:0.75rem;font-weight:700;">🟢 DARAJA LIVE (Paybill)</span>';
+            portalBadgeHtml = '<span style="background:#047857;color:white;padding:0.2rem 0.55rem;border-radius:4px;font-size:0.75rem;font-weight:700;">🟢 Live Daraja STK</span>';
+          } else {
+            badgeHtml = '<span style="background:#fef3c7;color:#92400e;padding:0.25rem 0.65rem;border-radius:999px;font-size:0.75rem;font-weight:700;">🟡 DARAJA SANDBOX (Test)</span>';
+            portalBadgeHtml = '<span style="background:#b45309;color:white;padding:0.2rem 0.55rem;border-radius:4px;font-size:0.75rem;font-weight:700;">🟡 Sandbox Test STK</span>';
+          }
+        } else {
+          badgeHtml = '<span style="background:var(--bg-elevated);color:var(--text-muted);border:1px solid var(--border-main);padding:0.25rem 0.65rem;border-radius:999px;font-size:0.75rem;font-weight:600;">⚪ SIMULATOR MODE</span>';
+          portalBadgeHtml = '<span style="background:#4b5563;color:white;padding:0.2rem 0.55rem;border-radius:4px;font-size:0.75rem;font-weight:600;">⚪ Simulator Mode</span>';
+        }
+
+        if (badge) badge.innerHTML = badgeHtml;
+        if (portalBadge) portalBadge.innerHTML = portalBadgeHtml;
+      }
+
+      function testDarajaConnection() {
+        const btn = document.getElementById('testDarajaConnectionBtn');
+        const resultBox = document.getElementById('darajaTestResultBox');
+        const env = document.getElementById('settingDarajaEnv').value;
+        const consumerKey = document.getElementById('settingDarajaKey').value.trim();
+        const consumerSecret = document.getElementById('settingDarajaSecret').value.trim();
+
+        if (!consumerKey || !consumerSecret) {
+          resultBox.style.display = 'block';
+          resultBox.style.background = '#fef2f2';
+          resultBox.style.color = '#b91c1c';
+          resultBox.style.border = '1px solid #fecaca';
+          resultBox.textContent = 'Please enter both Consumer Key and Consumer Secret to test.';
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Testing Safaricom Token...';
+        resultBox.style.display = 'none';
+
+        fetch(getDarajaEndpoint(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'test_auth',
+            env,
+            consumerKey,
+            consumerSecret
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          btn.disabled = false;
+          btn.textContent = '🔍 Test Daraja Connection';
+          resultBox.style.display = 'block';
+
+          if (data.success) {
+            resultBox.style.background = '#ecfdf5';
+            resultBox.style.color = '#065f46';
+            resultBox.style.border = '1px solid #a7f3d0';
+            resultBox.innerHTML = `<strong>✅ Connection Successful!</strong> Safaricom OAuth token generated successfully in <em>${env}</em> mode. Expires in ${data.expires_in}s.`;
+          } else {
+            resultBox.style.background = '#fef2f2';
+            resultBox.style.color = '#b91c1c';
+            resultBox.style.border = '1px solid #fecaca';
+            resultBox.innerHTML = `<strong>❌ Connection Failed:</strong> ${escapeHTML(data.message || 'Could not authenticate with Safaricom.')}`;
+          }
+        })
+        .catch(err => {
+          btn.disabled = false;
+          btn.textContent = '🔍 Test Daraja Connection';
+          resultBox.style.display = 'block';
+          resultBox.style.background = '#fef2f2';
+          resultBox.style.color = '#b91c1c';
+          resultBox.style.border = '1px solid #fecaca';
+          resultBox.innerHTML = `<strong>⚠️ Network / CORS Error:</strong> ${escapeHTML(err.message || 'Could not reach Daraja proxy.')}`;
+        });
+      }
+
+      let activeStkPollInterval = null;
+      let activeStkCountdown = 60;
+      let activeStkCheckoutId = null;
+
+      function triggerLiveStkPush(phone, amount, accountRef, unitId) {
+        const daraja = getDarajaConfig();
+        const triggerBtn = document.getElementById('triggerStkPushBtn');
+
+        // Check if Daraja is enabled
+        if (!daraja.enabled) {
+          // Simulation mode fallback
+          triggerBtn.disabled = true;
+          triggerBtn.innerHTML = '⏳ Sending STK Prompt to phone...';
+
+          setTimeout(() => {
+            triggerBtn.disabled = false;
+            triggerBtn.innerHTML = '📲 Send M-Pesa Prompt to My Phone';
+
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = 'SBA';
+            for (let i = 0; i < 7; i++) {
+              code += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+
+            document.getElementById('tenantInputMpesaCode').value = code;
+            document.getElementById('tenantInputAmountPaid').value = amount;
+
+            showToast(`📲 STK Prompt simulated to ${phone}! M-Pesa code ${code} pre-filled below. Click Confirm to get receipt.`);
+          }, 1000);
+          return;
+        }
+
+        // Live Daraja STK Push execution
+        triggerBtn.disabled = true;
+        triggerBtn.innerHTML = '⏳ Initiating Safaricom STK Push...';
+
+        fetch(getDarajaEndpoint(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'push',
+            env: daraja.env,
+            consumerKey: daraja.consumerKey,
+            consumerSecret: daraja.consumerSecret,
+            shortcode: daraja.shortcode,
+            passkey: daraja.passkey,
+            transactionType: daraja.type || 'CustomerPayBillOnline',
+            phone,
+            amount,
+            accountRef: accountRef || 'Rent',
+            transactionDesc: `Rent ${accountRef || ''}`.trim()
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          triggerBtn.disabled = false;
+          triggerBtn.innerHTML = '📲 Send M-Pesa Prompt to My Phone';
+
+          if (data.success && data.CheckoutRequestID) {
+            activeStkCheckoutId = data.CheckoutRequestID;
+            openStkWaitModal(phone, amount, accountRef, unitId, data.CheckoutRequestID);
+          } else {
+            showToast(`Safaricom Error: ${data.message || 'Could not initiate STK push.'}`, 'error');
+          }
+        })
+        .catch(err => {
+          triggerBtn.disabled = false;
+          triggerBtn.innerHTML = '📲 Send M-Pesa Prompt to My Phone';
+          showToast(`STK Push failed: ${err.message}. Falling back to manual M-Pesa code entry.`, 'warning');
+        });
+      }
+
+      function openStkWaitModal(phone, amount, accountRef, unitId, checkoutId) {
+        document.getElementById('stkModalPhone').textContent = phone;
+        document.getElementById('stkModalAmount').textContent = formatKES(amount);
+        document.getElementById('stkModalHeading').textContent = 'Check Your Phone Screen';
+        document.getElementById('stkModalHeading').style.color = '#111827';
+        document.getElementById('stkModalIcon').textContent = '📲';
+        document.getElementById('stkModalStatusBox').style.display = 'block';
+        document.getElementById('stkModalSuccessBox').style.display = 'none';
+        document.getElementById('stkViewReceiptBtn').style.display = 'none';
+        document.getElementById('stkCancelWaitBtn').textContent = 'Cancel / Close';
+
+        openModal('stkWaitModal');
+
+        // Start 60-second countdown
+        activeStkCountdown = 60;
+        document.getElementById('stkModalCountdown').textContent = `Time remaining: ${activeStkCountdown}s`;
+
+        if (activeStkPollInterval) clearInterval(activeStkPollInterval);
+
+        activeStkPollInterval = setInterval(() => {
+          activeStkCountdown -= 3;
+          if (activeStkCountdown <= 0) {
+            stopStkPolling();
+            document.getElementById('stkModalStatusText').textContent = '⏰ Transaction timed out. Did not detect PIN.';
+            document.getElementById('stkModalStatusText').style.color = '#b91c1c';
+            document.getElementById('stkModalCountdown').textContent = 'Please try again or use Paybill option.';
+            return;
+          }
+
+          document.getElementById('stkModalCountdown').textContent = `Time remaining: ${activeStkCountdown}s`;
+          queryStkStatus(checkoutId, phone, amount, accountRef, unitId);
+        }, 3000);
+      }
+
+      function stopStkPolling() {
+        if (activeStkPollInterval) {
+          clearInterval(activeStkPollInterval);
+          activeStkPollInterval = null;
+        }
+      }
+
+      function queryStkStatus(checkoutId, phone, amount, accountRef, unitId) {
+        const daraja = getDarajaConfig();
+
+        fetch(getDarajaEndpoint(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'query',
+            env: daraja.env,
+            consumerKey: daraja.consumerKey,
+            consumerSecret: daraja.consumerSecret,
+            shortcode: daraja.shortcode,
+            passkey: daraja.passkey,
+            checkoutRequestId: checkoutId
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.success) return;
+
+          if (data.status === 'COMPLETED') {
+            stopStkPolling();
+            handleStkSuccess(amount, phone, unitId);
+          } else if (data.status === 'CANCELLED') {
+            stopStkPolling();
+            document.getElementById('stkModalIcon').textContent = '❌';
+            document.getElementById('stkModalHeading').textContent = 'Transaction Cancelled';
+            document.getElementById('stkModalHeading').style.color = '#b91c1c';
+            document.getElementById('stkModalStatusText').textContent = 'Safaricom: Request was cancelled on the phone.';
+            document.getElementById('stkModalStatusText').style.color = '#b91c1c';
+          } else if (data.status === 'TIMEOUT') {
+            stopStkPolling();
+            document.getElementById('stkModalIcon').textContent = '⏰';
+            document.getElementById('stkModalStatusText').textContent = 'Safaricom: PIN was not entered in time.';
+            document.getElementById('stkModalStatusText').style.color = '#b91c1c';
+          } else if (data.status === 'FAILED') {
+            stopStkPolling();
+            document.getElementById('stkModalIcon').textContent = '⚠️';
+            document.getElementById('stkModalStatusText').textContent = data.ResultDesc || 'Transaction failed.';
+            document.getElementById('stkModalStatusText').style.color = '#b91c1c';
+          }
+        })
+        .catch(err => {
+          console.warn('STK query check error:', err);
+        });
+      }
+
+      function handleStkSuccess(amount, phone, unitId) {
+        const daraja = getDarajaConfig();
+
+        // Generate Safaricom M-Pesa receipt code
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let code = 'QK';
+        for (let i = 0; i < 8; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+        document.getElementById('stkModalIcon').textContent = '✅';
+        document.getElementById('stkModalHeading').textContent = 'Payment Completed!';
+        document.getElementById('stkModalHeading').style.color = '#047857';
+        document.getElementById('stkModalStatusBox').style.display = 'none';
+
+        const successBox = document.getElementById('stkModalSuccessBox');
+        successBox.style.display = 'block';
+        document.getElementById('stkSuccessMpesaCode').textContent = code;
+        document.getElementById('stkSuccessAmount').textContent = formatKES(amount);
+
+        // Pre-fill manual form in background as backup
+        document.getElementById('tenantInputMpesaCode').value = code;
+        document.getElementById('tenantInputAmountPaid').value = amount;
+
+        let createdPaymentId = null;
+
+        // Auto-record payment in Rent Book if enabled
+        if (daraja.autoRecord && unitId) {
+          const newPayment = {
+            id: generateId('pay_'),
+            unitId,
+            amount: Number(amount),
+            date: new Date().toISOString().substring(0, 10),
+            mpesaCode: code,
+            notes: `Live Daraja STK Push from ${phone}`,
+            createdAt: new Date().toISOString()
+          };
+
+          appState.payments.push(newPayment);
+          saveState();
+          renderAll();
+          createdPaymentId = newPayment.id;
+        }
+
+        const receiptBtn = document.getElementById('stkViewReceiptBtn');
+        if (createdPaymentId) {
+          receiptBtn.style.display = 'inline-flex';
+          receiptBtn.onclick = () => {
+            closeModal('stkWaitModal');
+            handleOpenReceipt(createdPaymentId);
+          };
+        }
+
+        document.getElementById('stkCancelWaitBtn').textContent = 'Done';
+        showToast(`🎉 M-Pesa Payment of ${formatKES(amount)} verified! Code: ${code}`);
       }
 
       // --- LANDLORD EXPENSE TRACKER & NET PROFIT ENGINE ---
@@ -6603,6 +7118,7 @@
         // Render Security Card details
         renderSecuritySettings();
         renderLatePenaltySettings();
+        renderDarajaSettings();
       }
 
       function renderSecuritySettings() {
@@ -8250,6 +8766,66 @@
                 meterBox.style.display = 'none';
               }
             }
+          });
+        }
+
+        // Safaricom Daraja STK Push Listeners
+        const darajaForm = document.getElementById('darajaSettingsForm');
+        if (darajaForm) {
+          darajaForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const daraja = getDarajaConfig();
+            daraja.enabled = document.getElementById('settingDarajaEnabled').checked;
+            daraja.env = document.getElementById('settingDarajaEnv').value;
+            daraja.consumerKey = document.getElementById('settingDarajaKey').value.trim();
+            daraja.consumerSecret = document.getElementById('settingDarajaSecret').value.trim();
+            daraja.shortcode = document.getElementById('settingDarajaShortcode').value.trim() || '174379';
+            daraja.passkey = document.getElementById('settingDarajaPasskey').value.trim();
+            daraja.type = document.getElementById('settingDarajaType').value;
+            daraja.autoRecord = document.getElementById('settingDarajaAutoRecord').checked;
+
+            saveState();
+            renderDarajaSettings();
+            showToast('Daraja API settings saved successfully!');
+          });
+        }
+
+        const testDarajaBtn = document.getElementById('testDarajaConnectionBtn');
+        if (testDarajaBtn) {
+          testDarajaBtn.addEventListener('click', testDarajaConnection);
+        }
+
+        const cancelStkWaitBtn = document.getElementById('stkCancelWaitBtn');
+        if (cancelStkWaitBtn) {
+          cancelStkWaitBtn.addEventListener('click', () => {
+            stopStkPolling();
+            closeModal('stkWaitModal');
+          });
+        }
+
+        // Connect STK Push trigger in Tenant Pay Portal
+        const liveTriggerStkBtn = document.getElementById('triggerStkPushBtn');
+        if (liveTriggerStkBtn) {
+          // Replace previous listener with live Daraja trigger
+          const newBtn = liveTriggerStkBtn.cloneNode(true);
+          liveTriggerStkBtn.parentNode.replaceChild(newBtn, liveTriggerStkBtn);
+          newBtn.addEventListener('click', () => {
+            const phone = document.getElementById('stkPhoneNumber').value.trim();
+            const amount = Number(document.getElementById('stkAmount').value);
+            const unitId = getActiveTenantPayUnitId();
+            const unit = appState.units.find(u => u.id === unitId);
+            const unitName = unit ? unit.name : 'Unit';
+
+            if (!phone || phone.length < 9) {
+              showToast('Please enter a valid Safaricom phone number (e.g. 0712 345 678)', 'warning');
+              return;
+            }
+            if (!amount || amount <= 0) {
+              showToast('Please enter a valid amount to pay.', 'warning');
+              return;
+            }
+
+            triggerLiveStkPush(phone, amount, unitName, unitId);
           });
         }
 
