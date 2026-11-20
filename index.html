@@ -1620,6 +1620,9 @@
           <button class="btn btn-secondary" id="openVacateModalBtn" title="Tenant Move-Out Clearance &amp; Deposit Refund Statement">
             🚪 Move-Out / Vacate
           </button>
+          <button class="btn btn-secondary" id="openRentReviewModalBtn" title="Generate statutory 90-day rent review and increase notice">
+            📈 Rent Review
+          </button>
           <button class="btn btn-primary" id="addNewUnitBtn">
             + Add New Unit
           </button>
@@ -2487,6 +2490,10 @@
 
             <button class="btn btn-secondary" id="settingsVacateBtn" title="Open Tenant Move-Out Clearance and Deposit Refund Statement">
               🚪 Move-Out Clearance &amp; Deposit Statement
+            </button>
+
+            <button class="btn btn-secondary" id="settingsRentReviewBtn" title="Generate Statutory 90-Day Rent Review Notice">
+              📈 90-Day Rent Review Notice Generator
             </button>
 
             <hr style="border: 0; border-top: 1px solid var(--border-subtle); margin: 0.5rem 0;">
@@ -3491,6 +3498,129 @@
         <button type="button" class="btn btn-primary" id="stkViewReceiptBtn" style="display: none; background: #047857; border-color: #047857;">
           🧾 View Official Receipt
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: FORMAL 90-DAY RENT REVIEW & INCREASE NOTICE
+       ======================================================================== -->
+  <div class="modal-backdrop" id="rentReviewModal" role="dialog" aria-modal="true" aria-labelledby="rentReviewModalTitle">
+    <div class="modal-dialog" style="max-width: 900px; width: 96%;">
+      <div class="modal-header">
+        <div>
+          <h3 id="rentReviewModalTitle">📈 Formal 90-Day Rent Review Notice</h3>
+          <p class="small-meta">Statutory notice of intended rent adjustment pursuant to Kenyan tenancy laws</p>
+        </div>
+        <button class="modal-close-btn" data-close-modal="rentReviewModal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="max-height: 82vh; overflow-y: auto;">
+        <!-- Top Customizer / Interactive Control Bar (hidden in print) -->
+        <div class="no-print" style="background: var(--bg-surface-alt); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 1.15rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem;">
+            <strong style="font-size: 0.95rem;">⚙️ Rent Review Notice Customizer</strong>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-sm btn-secondary" id="whatsappRentReviewBtn" title="Send rent review summary on WhatsApp">
+                💬 WhatsApp Notice
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" id="copyRentReviewBtn" title="Copy notice text to clipboard">
+                📋 Copy Text
+              </button>
+              <button type="button" class="btn btn-sm btn-primary" id="applyNewRentToUnitBtn" title="Update the unit's monthly rent in Rent Book to the new proposed rate">
+                💾 Apply New Rent to Unit
+              </button>
+            </div>
+          </div>
+
+          <!-- Section A: Unit & Timing -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.65rem; font-size: 0.85rem; margin-bottom: 0.85rem;">
+            <div class="form-group">
+              <label for="rrSelectUnit">Select Unit</label>
+              <select id="rrSelectUnit" class="form-select"></select>
+            </div>
+
+            <div class="form-group">
+              <label for="rrNoticeDate">Date of Notice</label>
+              <input type="date" id="rrNoticeDate" class="form-input">
+            </div>
+
+            <div class="form-group">
+              <label for="rrNoticePeriod">Notice Period</label>
+              <select id="rrNoticePeriod" class="form-select">
+                <option value="90" selected>90 Days (3 Months - Standard Kenyan)</option>
+                <option value="60">60 Days (2 Months)</option>
+                <option value="30">30 Days (1 Month)</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="rrEffectiveDate">Effective Commencement Date</label>
+              <input type="date" id="rrEffectiveDate" class="form-input">
+            </div>
+          </div>
+
+          <!-- Section B: Tenant & Rates Comparison -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.65rem; font-size: 0.85rem; margin-bottom: 0.85rem;">
+            <div class="form-group">
+              <label for="rrTenantName">Tenant Full Name</label>
+              <input type="text" id="rrTenantName" class="form-input" placeholder="e.g. Alice Wambui">
+            </div>
+
+            <div class="form-group">
+              <label for="rrTenantId">National ID / Passport</label>
+              <input type="text" id="rrTenantId" class="form-input" placeholder="e.g. 28475910">
+            </div>
+
+            <div class="form-group">
+              <label for="rrCurrentRent">Current Rent (KES)</label>
+              <input type="number" id="rrCurrentRent" class="form-input tabular-nums" min="0" step="100">
+            </div>
+
+            <div class="form-group">
+              <label for="rrNewRent">Proposed New Rent (KES) *</label>
+              <input type="number" id="rrNewRent" class="form-input tabular-nums" min="0" step="100" style="font-weight: 700; border-color: var(--brand-primary);">
+            </div>
+          </div>
+
+          <!-- Section C: Grounds for Review -->
+          <div style="display: grid; grid-template-columns: 1fr; gap: 0.65rem; font-size: 0.85rem; margin-bottom: 0.85rem;">
+            <div class="form-group">
+              <label for="rrReasonSelect">Grounds / Justification for Rent Review</label>
+              <select id="rrReasonSelect" class="form-select">
+                <option value="General inflation and rising building maintenance, security and common utility costs">General inflation &amp; rising property operational/security costs</option>
+                <option value="Substantial capital renovations, property repainting and water/security infrastructure upgrades">Capital renovations &amp; building infrastructure upgrades</option>
+                <option value="Adjustment to prevailing market rental values in this residential area">Realignment to prevailing open market rental values in the neighborhood</option>
+                <option value="Increased county land rates, municipal water tariffs, and statutory operational costs">Increased county land rates, water tariffs &amp; statutory costs</option>
+                <option value="custom">Custom Justification (Enter below)</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="rrCustomReasonGroup" style="display: none;">
+              <label for="rrCustomReasonText">Custom Grounds Description</label>
+              <input type="text" id="rrCustomReasonText" class="form-input" placeholder="Enter custom justification for rent adjustment">
+            </div>
+          </div>
+
+          <!-- Live Comparison Banner -->
+          <div id="rrComparisonBanner" style="padding: 0.75rem 1rem; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; background: #eef3ef; border: 1px solid #c2dbcd;">
+            <!-- Populated dynamically via updateRentReviewPreview() -->
+          </div>
+        </div>
+
+        <!-- Printable Document Area -->
+        <div id="rrPreviewContainer" class="printable-area">
+          <!-- Populated dynamically via updateRentReviewPreview() -->
+        </div>
+      </div>
+
+      <div class="modal-footer no-print">
+        <button type="button" class="btn btn-secondary" data-close-modal="rentReviewModal">Close</button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="btn btn-primary" id="printRentReviewBtn">
+            🖨️ Print / Save Notice (PDF)
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -4687,6 +4817,390 @@
         `;
 
         document.getElementById('printablePaymentLedgerArea').innerHTML = html;
+      }
+
+      // --- FORMAL 90-DAY RENT REVIEW NOTICE ENGINE ---
+      function handleOpenRentReview(unitId = '') {
+        const select = document.getElementById('rrSelectUnit');
+        let opts = '';
+        const occupied = appState.units.filter(u => !u.isVacant);
+        const vacant = appState.units.filter(u => u.isVacant);
+
+        if (occupied.length > 0) {
+          opts += '<optgroup label="Occupied Units">';
+          occupied.forEach(u => {
+            opts += `<option value="${u.id}">${escapeHTML(u.name)} (${escapeHTML(u.tenantName || 'Occupied')})</option>`;
+          });
+          opts += '</optgroup>';
+        }
+
+        if (vacant.length > 0) {
+          opts += '<optgroup label="Vacant Units">';
+          vacant.forEach(u => {
+            opts += `<option value="${u.id}">${escapeHTML(u.name)} (Vacant)</option>`;
+          });
+          opts += '</optgroup>';
+        }
+
+        select.innerHTML = opts;
+
+        if (unitId) {
+          select.value = unitId;
+        } else if (occupied.length > 0) {
+          select.value = occupied[0].id;
+        } else if (appState.units.length > 0) {
+          select.value = appState.units[0].id;
+        }
+
+        const today = new Date();
+        const todayStr = today.toISOString().substring(0, 10);
+        document.getElementById('rrNoticeDate').value = todayStr;
+        document.getElementById('rrNoticePeriod').value = '90';
+
+        calculateAndSetRentReviewEffectiveDate();
+        loadRentReviewFieldsFromUnit(select.value);
+        updateRentReviewPreview();
+        openModal('rentReviewModal');
+      }
+
+      function calculateAndSetRentReviewEffectiveDate() {
+        const noticeDateVal = document.getElementById('rrNoticeDate').value;
+        const days = Number(document.getElementById('rrNoticePeriod').value) || 90;
+        const baseDate = noticeDateVal ? new Date(noticeDateVal) : new Date();
+
+        // Add notice period in days
+        const futureDate = new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
+
+        // Standard Kenyan practice: rent review takes effect on the 1st of the following month
+        let effYear = futureDate.getFullYear();
+        let effMonth = futureDate.getMonth() + 1; // 1-12
+        if (futureDate.getDate() > 1) {
+          effMonth += 1;
+          if (effMonth > 12) {
+            effMonth = 1;
+            effYear += 1;
+          }
+        }
+
+        const mStr = effMonth < 10 ? '0' + effMonth : String(effMonth);
+        const effDateStr = `${effYear}-${mStr}-01`;
+        document.getElementById('rrEffectiveDate').value = effDateStr;
+      }
+
+      function loadRentReviewFieldsFromUnit(unitId) {
+        const unit = appState.units.find(u => u.id === unitId);
+        if (!unit) return;
+
+        document.getElementById('rrTenantName').value = unit.tenantName || '';
+        document.getElementById('rrTenantId').value = unit.tenantIdNumber || '';
+        const currentRent = Number(unit.monthlyRent) || 0;
+        document.getElementById('rrCurrentRent').value = currentRent;
+
+        // Default proposed rent: 10% increase rounded to nearest 500
+        let defaultNew = currentRent > 0 ? Math.round((currentRent * 1.1) / 500) * 500 : 0;
+        if (defaultNew === currentRent) defaultNew += 500;
+        document.getElementById('rrNewRent').value = defaultNew;
+      }
+
+      function calculateRentReviewStats() {
+        const currentRent = Number(document.getElementById('rrCurrentRent').value) || 0;
+        const newRent = Number(document.getElementById('rrNewRent').value) || 0;
+        const diff = newRent - currentRent;
+        const pct = currentRent > 0 ? Math.round((diff / currentRent) * 1000) / 10 : 0;
+
+        return {
+          currentRent,
+          newRent,
+          diff,
+          pct,
+          isIncrease: diff > 0,
+          isDecrease: diff < 0,
+          isEqual: diff === 0
+        };
+      }
+
+      function updateRentReviewPreview() {
+        const unitId = document.getElementById('rrSelectUnit').value;
+        const unit = appState.units.find(u => u.id === unitId);
+        const prop = appState.property || {};
+
+        const noticeDate = document.getElementById('rrNoticeDate').value || new Date().toISOString().substring(0, 10);
+        const effectiveDate = document.getElementById('rrEffectiveDate').value || noticeDate;
+        const daysNotice = document.getElementById('rrNoticePeriod').value || '90';
+
+        const tenantName = document.getElementById('rrTenantName').value.trim() || (unit ? unit.tenantName : '') || 'Tenant';
+        const tenantId = document.getElementById('rrTenantId').value.trim() || (unit ? unit.tenantIdNumber : '') || 'N/A';
+        const tenantPhone = unit ? unit.tenantPhone : 'N/A';
+
+        const propName = prop.name || 'Rental Premises';
+        const landlordName = prop.landlordName || 'Landlord / Managing Agent';
+        const landlordPhone = prop.phone || 'N/A';
+        const unitName = unit ? unit.name : 'Unknown';
+
+        const stats = calculateRentReviewStats();
+
+        let groundsText = document.getElementById('rrReasonSelect').value;
+        if (groundsText === 'custom') {
+          groundsText = document.getElementById('rrCustomReasonText').value.trim() || 'General property operational costs and open market rental realignment.';
+        }
+
+        // 1. Update Comparison Banner
+        const banner = document.getElementById('rrComparisonBanner');
+        let changeBadge = '';
+        if (stats.isIncrease) {
+          changeBadge = `<span style="background: #047857; color: white; padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); font-weight: 700;">📈 INCREASE: +KES ${stats.diff.toLocaleString('en-KE')} (+${stats.pct}%)</span>`;
+        } else if (stats.isDecrease) {
+          changeBadge = `<span style="background: #0284c7; color: white; padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); font-weight: 700;">📉 REDUCTION: -KES ${Math.abs(stats.diff).toLocaleString('en-KE')} (${stats.pct}%)</span>`;
+        } else {
+          changeBadge = `<span style="background: #4b5563; color: white; padding: 0.35rem 0.75rem; border-radius: var(--radius-sm); font-weight: 700;">⚪ NO CHANGE (KES ${stats.currentRent.toLocaleString('en-KE')})</span>`;
+        }
+
+        banner.innerHTML = `
+          <div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);">Current: <strong>KES ${stats.currentRent.toLocaleString('en-KE')}</strong> &rarr; New: <strong>KES ${stats.newRent.toLocaleString('en-KE')}</strong></div>
+            <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 0.15rem;">Effective Date: <strong>${formatDateKE(effectiveDate)}</strong> (${daysNotice} Days Notice)</div>
+          </div>
+          <div>${changeBadge}</div>
+        `;
+
+        // 2. Render Printable Statutory Notice
+        const certRef = `RN-${noticeDate.replace(/-/g, '')}-${unitName.replace(/[^a-zA-Z0-9]/g, '')}`;
+        const container = document.getElementById('rrPreviewContainer');
+
+        let paybillInfo = '';
+        if (prop.paybillNumber) paybillInfo += `Paybill: <strong>${escapeHTML(prop.paybillNumber)}</strong>, Account: <strong>${escapeHTML(unitName)}</strong>`;
+        if (prop.tillNumber) paybillInfo += ` or Till Number: <strong>${escapeHTML(prop.tillNumber)}</strong>`;
+        if (!paybillInfo) paybillInfo = 'As per existing tenancy payment instructions';
+
+        container.innerHTML = `
+          <div style="background: #ffffff; color: #111827; padding: 2.25rem 2rem; border-radius: var(--radius-md); border: 2px solid #16382c; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.55; font-size: 0.9rem;">
+            <!-- Document Letterhead -->
+            <div style="text-align: center; border-bottom: 2px solid #16382c; padding-bottom: 1rem; margin-bottom: 1.25rem;">
+              <div style="font-size: 1.8rem; margin-bottom: 0.25rem;">🇰🇪</div>
+              <div style="font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: #53645b; font-weight: 700;">Republic of Kenya &bull; Tenancy Regulatory Standards</div>
+              <h2 style="margin: 0.35rem 0; font-size: 1.35rem; color: #16382c; text-transform: uppercase; letter-spacing: 0.04em;">Statutory Notice of Intended Rent Review &amp; Adjustment</h2>
+              <div style="font-size: 0.8rem; color: #53645b;">Pursuant to Kenyan Residential Tenancy Conventions &amp; Standard Lease Covenants</div>
+            </div>
+
+            <!-- Meta Reference Block -->
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; font-size: 0.825rem; margin-bottom: 1.25rem; background: #f9fafb; padding: 0.65rem 0.85rem; border-radius: 4px; border: 1px solid #e5e7eb;">
+              <div><strong>NOTICE REF:</strong> <span style="font-family: monospace;">${escapeHTML(certRef)}</span></div>
+              <div><strong>DATE OF NOTICE:</strong> ${formatDateKE(noticeDate)}</div>
+              <div><strong>STATUTORY NOTICE PERIOD:</strong> ${escapeHTML(daysNotice)} Calendar Days</div>
+              <div><strong>EFFECTIVE COMMENCEMENT:</strong> <span style="font-weight: 700; color: #16382c;">${formatDateKE(effectiveDate)}</span></div>
+            </div>
+
+            <!-- Addressed Parties Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; font-size: 0.85rem;">
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 0.75rem;">
+                <div style="font-weight: 700; color: #16382c; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.25rem; margin-bottom: 0.4rem; text-transform: uppercase; font-size: 0.75rem;">The Landlord / Property Manager</div>
+                <div><strong>Property:</strong> ${escapeHTML(propName)}</div>
+                <div><strong>Managing Agent / Landlord:</strong> ${escapeHTML(landlordName)}</div>
+                <div><strong>Telephone Contact:</strong> ${escapeHTML(landlordPhone)}</div>
+              </div>
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 0.75rem;">
+                <div style="font-weight: 700; color: #16382c; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.25rem; margin-bottom: 0.4rem; text-transform: uppercase; font-size: 0.75rem;">The Tenant (Lessee)</div>
+                <div><strong>Tenant Name:</strong> ${escapeHTML(tenantName)}</div>
+                <div><strong>National ID / Passport:</strong> ${escapeHTML(tenantId)}</div>
+                <div><strong>Demised Premises:</strong> Unit / House No. <strong>${escapeHTML(unitName)}</strong></div>
+              </div>
+            </div>
+
+            <!-- Formal Notice Body Clauses -->
+            <div style="margin-bottom: 1.25rem; font-size: 0.875rem; line-height: 1.6;">
+              <p style="margin-bottom: 0.75rem;">
+                Dear <strong>${escapeHTML(tenantName)}</strong>,
+              </p>
+              <p style="margin-bottom: 0.75rem;">
+                <strong>TAKE NOTICE</strong> that pursuant to the terms and covenants of your Residential Tenancy Agreement and standard Kenyan property leasing laws, the Landlord hereby issues you formal <strong>${escapeHTML(daysNotice)} (Ninety) Calendar Days' Written Notice</strong> of an upcoming review of the monthly rental rate for <strong>Unit ${escapeHTML(unitName)}</strong> at <strong>${escapeHTML(propName)}</strong>.
+              </p>
+
+              <!-- Rental Adjustment Comparison Table -->
+              <div style="margin: 1rem 0;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; border: 2px solid #16382c;">
+                  <thead>
+                    <tr style="background: #16382c; color: #ffffff; text-align: left;">
+                      <th style="padding: 0.45rem 0.65rem;">Particulars</th>
+                      <th style="padding: 0.45rem 0.65rem; text-align: right;">Current Rate</th>
+                      <th style="padding: 0.45rem 0.65rem; text-align: right;">Revised Rate</th>
+                      <th style="padding: 0.45rem 0.65rem; text-align: right;">Net Adjustment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style="padding: 0.5rem 0.65rem; border-bottom: 1px solid #e5e7eb; font-weight: 600;">Monthly Residential Rent</td>
+                      <td style="padding: 0.5rem 0.65rem; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace;">KES ${stats.currentRent.toLocaleString('en-KE')}</td>
+                      <td style="padding: 0.5rem 0.65rem; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 700; color: #16382c; font-size: 0.95rem;">KES ${stats.newRent.toLocaleString('en-KE')}</td>
+                      <td style="padding: 0.5rem 0.65rem; border-bottom: 1px solid #e5e7eb; text-align: right; font-family: monospace; font-weight: 700; color: ${stats.isIncrease ? '#047857' : '#0284c7'};">
+                        ${stats.isIncrease ? '+' : ''}KES ${stats.diff.toLocaleString('en-KE')} (${stats.isIncrease ? '+' : ''}${stats.pct}%)
+                      </td>
+                    </tr>
+                    <tr style="background: #f9fafb; font-size: 0.8rem;">
+                      <td colspan="4" style="padding: 0.45rem 0.65rem;">
+                        <strong>Effective Commencement Date:</strong> Strictly from <strong>${formatDateKE(effectiveDate)}</strong> onward &bull; 
+                        <strong>Payment Terms:</strong> Payable on or before the 5th of each calendar month via ${paybillInfo}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Grounds for Review -->
+              <div style="background: #fdfbf7; border: 1px solid #ded8ca; border-radius: 4px; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.825rem;">
+                <strong style="text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.25rem; color: #16382c;">Grounds &amp; Justification for Review:</strong>
+                ${escapeHTML(groundsText)}. This adjustment ensures continued high standards of building upkeep, prompt water and garbage utility provisions, responsive repairs, and general premises maintenance.
+              </div>
+
+              <!-- Right of Response Clause -->
+              <p style="margin-bottom: 0.75rem; font-size: 0.825rem; color: #374151;">
+                <strong>Tenancy Continuation Terms:</strong> If you wish to continue your tenancy under the revised rental rate, please sign and return the attached Tenant Endorsement Slip below. Should you elect not to renew your tenancy under the revised terms, you are entitled to serve at least one calendar month's written notice of intent to vacate prior to <strong>${formatDateKE(effectiveDate)}</strong> in accordance with your Tenancy Agreement.
+              </p>
+            </div>
+
+            <!-- Landlord Signature -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1.25rem; padding-bottom: 1.25rem; border-bottom: 2px dashed #9ca3af;">
+              <div>
+                <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; margin-bottom: 0.25rem;">Issued by Landlord / Managing Agent:</div>
+                <div style="border-bottom: 1px solid #000000; height: 35px; margin-bottom: 0.25rem;"></div>
+                <div style="font-size: 0.8rem;"><strong>${escapeHTML(landlordName)}</strong> &bull; Date: ${formatDateKE(noticeDate)}</div>
+                <div style="font-size: 0.75rem; color: #53645b;">Phone: ${escapeHTML(landlordPhone)}</div>
+              </div>
+              <div style="display: flex; align-items: flex-end;">
+                <div style="font-size: 0.75rem; color: #6b7280; font-style: italic; line-height: 1.4;">
+                  Please sign the tear-off slip below and deliver it to the caretaker or send an electronic confirmation via WhatsApp.
+                </div>
+              </div>
+            </div>
+
+            <!-- Tear-off Tenant Endorsement Slip -->
+            <div style="margin-top: 1.25rem; padding-top: 0.5rem;">
+              <div style="text-align: center; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6b7280; margin-bottom: 0.5rem;">
+                ✂️ TENANT ENDORSEMENT &amp; ACKNOWLEDGMENT SLIP (RETURN TO LANDLORD) ✂️
+              </div>
+              <div style="background: #f9fafb; border: 1px solid #d1d5db; border-radius: 4px; padding: 0.75rem; font-size: 0.825rem; line-height: 1.5;">
+                <p style="margin-bottom: 0.5rem;">
+                  I, <strong>${escapeHTML(tenantName)}</strong>, holding National ID / Passport No. <strong>${escapeHTML(tenantId)}</strong>, being the tenant of <strong>Unit ${escapeHTML(unitName)}</strong> at <strong>${escapeHTML(propName)}</strong>, hereby acknowledge receipt of the Rent Review Notice dated <strong>${formatDateKE(noticeDate)}</strong>.
+                </p>
+                <div style="margin: 0.5rem 0; font-size: 0.85rem;">
+                  <label style="margin-right: 1.5rem; cursor: pointer;">
+                    <input type="checkbox" style="margin-right: 0.25rem;"> [ ] I <strong>ACCEPT</strong> the revised monthly rent of <strong>KES ${stats.newRent.toLocaleString('en-KE')}</strong> effective ${formatDateKE(effectiveDate)}.
+                  </label>
+                  <label style="cursor: pointer;">
+                    <input type="checkbox" style="margin-right: 0.25rem;"> [ ] I <strong>DECLINE</strong> and shall provide formal move-out notice.
+                  </label>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+                  <div>
+                    <div style="border-bottom: 1px solid #000000; height: 25px; margin-bottom: 0.2rem;"></div>
+                    <div style="font-size: 0.75rem; color: #53645b;">Tenant Signature</div>
+                  </div>
+                  <div>
+                    <div style="border-bottom: 1px solid #000000; height: 25px; margin-bottom: 0.2rem;"></div>
+                    <div style="font-size: 0.75rem; color: #53645b;">Date Signed &bull; Contact Phone</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function generateRentReviewWhatsAppText() {
+        const unitId = document.getElementById('rrSelectUnit').value;
+        const unit = appState.units.find(u => u.id === unitId);
+        const prop = appState.property || {};
+
+        const noticeDate = document.getElementById('rrNoticeDate').value || new Date().toISOString().substring(0, 10);
+        const effectiveDate = document.getElementById('rrEffectiveDate').value || noticeDate;
+        const daysNotice = document.getElementById('rrNoticePeriod').value || '90';
+
+        const tenantName = document.getElementById('rrTenantName').value.trim() || (unit ? unit.tenantName : '') || 'Tenant';
+        const propName = prop.name || 'Rental Premises';
+        const unitName = unit ? unit.name : 'Unknown';
+
+        const stats = calculateRentReviewStats();
+
+        let groundsText = document.getElementById('rrReasonSelect').value;
+        if (groundsText === 'custom') {
+          groundsText = document.getElementById('rrCustomReasonText').value.trim() || 'General property operational costs and open market rental realignment.';
+        }
+
+        let msg = `*STATUTORY NOTICE: RENT REVIEW & ADJUSTMENT*\n`;
+        msg += `Property: *${propName}*\n`;
+        msg += `Unit: *${unitName}*\n`;
+        msg += `Tenant: *${tenantName}*\n`;
+        msg += `Notice Date: *${formatDateKE(noticeDate)}*\n`;
+        msg += `Statutory Period: *${daysNotice} Calendar Days*\n`;
+        msg += `--------------------------------------\n`;
+        msg += `Dear ${tenantName},\n\n`;
+        msg += `Please receive this formal ${daysNotice}-day notice regarding an upcoming revision of your monthly rental rate for Unit ${unitName}.\n\n`;
+        msg += `• Current Monthly Rent: *KES ${stats.currentRent.toLocaleString('en-KE')}*\n`;
+        msg += `• Revised Monthly Rent: *KES ${stats.newRent.toLocaleString('en-KE')}*\n`;
+        msg += `• Net Adjustment: *+KES ${stats.diff.toLocaleString('en-KE')} (+${stats.pct}%)*\n`;
+        msg += `• Effective Date: *${formatDateKE(effectiveDate)}* onward\n\n`;
+        msg += `*Grounds for Review:*\n${groundsText}.\n\n`;
+        msg += `Rent remains payable on or before the 5th of each calendar month. We value your tenancy and look forward to continuing to provide a clean, secure, and well-maintained home.\n\n`;
+        msg += `Please reply to confirm receipt and acceptance.\n`;
+        msg += `Kind regards,\n`;
+        msg += `*${prop.landlordName || 'Landlord / Management'}*\n`;
+        msg += `_${prop.phone || ''}_`;
+
+        return msg;
+      }
+
+      function sendRentReviewWhatsApp() {
+        const text = generateRentReviewWhatsAppText();
+        const unitId = document.getElementById('rrSelectUnit').value;
+        const unit = appState.units.find(u => u.id === unitId);
+        const phone = (unit ? unit.tenantPhone : '') || '';
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+
+        let waUrl = 'https://wa.me/';
+        if (cleanPhone) {
+          let intlPhone = cleanPhone;
+          if (intlPhone.startsWith('0')) intlPhone = '254' + intlPhone.substring(1);
+          waUrl += intlPhone;
+        }
+        waUrl += '?text=' + encodeURIComponent(text.replace(/\\n/g, '\n'));
+        window.open(waUrl, '_blank');
+      }
+
+      function copyRentReviewNotice() {
+        const text = generateRentReviewWhatsAppText().replace(/\\n/g, '\n');
+        navigator.clipboard.writeText(text).then(() => {
+          showToast('Rent review notice text copied to clipboard!');
+        }).catch(() => {
+          showToast('Could not copy automatically.', 'warning');
+        });
+      }
+
+      function handleApplyNewRentToUnit() {
+        const unitId = document.getElementById('rrSelectUnit').value;
+        const unit = appState.units.find(u => u.id === unitId);
+        const newRent = Number(document.getElementById('rrNewRent').value) || 0;
+
+        if (!unit) {
+          showToast('Please select a unit.', 'warning');
+          return;
+        }
+
+        if (newRent <= 0) {
+          showToast('Please enter a valid new rent amount.', 'warning');
+          return;
+        }
+
+        showConfirm(
+          `Apply New Rent of KES ${newRent.toLocaleString('en-KE')} to Unit ${unit.name}?`,
+          `Are you sure you want to update the official monthly rent for Unit ${unit.name} from KES ${(unit.monthlyRent || 0).toLocaleString('en-KE')} to KES ${newRent.toLocaleString('en-KE')}? Future monthly charges will reflect this new rate.`,
+          () => {
+            unit.monthlyRent = newRent;
+            saveState();
+            renderAll();
+            document.getElementById('rrCurrentRent').value = newRent;
+            updateRentReviewPreview();
+            showToast(`Unit ${unit.name} monthly rent updated to KES ${newRent.toLocaleString('en-KE')}!`);
+          }
+        );
       }
 
       // --- SAFARICOM DARAJA STK PUSH ENGINE ---
@@ -6610,6 +7124,9 @@
                   </button>
                   <button class="btn btn-sm btn-secondary open-vacate-btn" data-unit-id="${unit.id}" title="Move-Out Settlement &amp; Vacate Unit">
                     🚪 Vacate
+                  </button>
+                  <button class="btn btn-sm btn-secondary open-rent-review-btn" data-unit-id="${unit.id}" title="Formal 90-Day Rent Review Notice">
+                    📈 Rent Review
                   </button>
                 ` : `
                   <button class="btn btn-sm btn-secondary edit-unit-btn" data-unit-id="${unit.id}">
@@ -8769,6 +9286,81 @@
           });
         }
 
+        // Formal 90-Day Rent Review Notice Listeners
+        const openRentReviewBtn = document.getElementById('openRentReviewModalBtn');
+        if (openRentReviewBtn) {
+          openRentReviewBtn.addEventListener('click', () => handleOpenRentReview());
+        }
+
+        const settingsRentReviewBtn = document.getElementById('settingsRentReviewBtn');
+        if (settingsRentReviewBtn) {
+          settingsRentReviewBtn.addEventListener('click', () => handleOpenRentReview());
+        }
+
+        const rrUnitSelect = document.getElementById('rrSelectUnit');
+        if (rrUnitSelect) {
+          rrUnitSelect.addEventListener('change', () => {
+            loadRentReviewFieldsFromUnit(rrUnitSelect.value);
+            updateRentReviewPreview();
+          });
+        }
+
+        const rrNoticePeriodSelect = document.getElementById('rrNoticePeriod');
+        if (rrNoticePeriodSelect) {
+          rrNoticePeriodSelect.addEventListener('change', () => {
+            calculateAndSetRentReviewEffectiveDate();
+            updateRentReviewPreview();
+          });
+        }
+
+        const rrNoticeDateInput = document.getElementById('rrNoticeDate');
+        if (rrNoticeDateInput) {
+          rrNoticeDateInput.addEventListener('change', () => {
+            calculateAndSetRentReviewEffectiveDate();
+            updateRentReviewPreview();
+          });
+        }
+
+        const rrReasonSelect = document.getElementById('rrReasonSelect');
+        if (rrReasonSelect) {
+          rrReasonSelect.addEventListener('change', () => {
+            const customGroup = document.getElementById('rrCustomReasonGroup');
+            if (customGroup) customGroup.style.display = rrReasonSelect.value === 'custom' ? 'block' : 'none';
+            updateRentReviewPreview();
+          });
+        }
+
+        [
+          'rrEffectiveDate', 'rrTenantName', 'rrTenantId',
+          'rrCurrentRent', 'rrNewRent', 'rrCustomReasonText'
+        ].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('input', updateRentReviewPreview);
+            el.addEventListener('change', updateRentReviewPreview);
+          }
+        });
+
+        const printRentReviewBtn = document.getElementById('printRentReviewBtn');
+        if (printRentReviewBtn) {
+          printRentReviewBtn.addEventListener('click', () => window.print());
+        }
+
+        const copyRentReviewBtn = document.getElementById('copyRentReviewBtn');
+        if (copyRentReviewBtn) {
+          copyRentReviewBtn.addEventListener('click', copyRentReviewNotice);
+        }
+
+        const whatsappRentReviewBtn = document.getElementById('whatsappRentReviewBtn');
+        if (whatsappRentReviewBtn) {
+          whatsappRentReviewBtn.addEventListener('click', sendRentReviewWhatsApp);
+        }
+
+        const applyNewRentBtn = document.getElementById('applyNewRentToUnitBtn');
+        if (applyNewRentBtn) {
+          applyNewRentBtn.addEventListener('click', handleApplyNewRentToUnit);
+        }
+
         // Safaricom Daraja STK Push Listeners
         const darajaForm = document.getElementById('darajaSettingsForm');
         if (darajaForm) {
@@ -9620,6 +10212,10 @@
 
         document.querySelectorAll('.open-vacate-btn').forEach(btn => {
           btn.addEventListener('click', () => handleOpenVacate(btn.dataset.unitId));
+        });
+
+        document.querySelectorAll('.open-rent-review-btn').forEach(btn => {
+          btn.addEventListener('click', () => handleOpenRentReview(btn.dataset.unitId));
         });
       }
 
