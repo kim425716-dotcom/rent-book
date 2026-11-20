@@ -1554,6 +1554,9 @@
           <button class="btn btn-secondary" id="dashAddBillBtn">
             + Add Bill (Water/Power)
           </button>
+          <button class="btn btn-secondary" id="dashLateFeeBtn" title="Assess late payment penalties for overdue units">
+            ⏰ Assess Late Fees
+          </button>
           <button class="btn btn-secondary" id="openMonthlyReportBtn" title="Generate Landlord Monthly Statement &amp; KRA MRI Tax">
             📊 Owner's Report &amp; Tax
           </button>
@@ -1698,9 +1701,14 @@
           <h2>Bills &amp; Utility Charges</h2>
           <p class="small-meta">Log monthly water, electricity, garbage, or repair costs per unit</p>
         </div>
-        <button class="btn btn-primary" id="openAddBillModalBtn">
-          + Record Bill
-        </button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary" id="openLateFeeModalBtn" title="Assess and apply late payment penalties for overdue units">
+            ⏰ Assess Late Fees
+          </button>
+          <button class="btn btn-primary" id="openAddBillModalBtn">
+            + Record Bill
+          </button>
+        </div>
       </div>
 
       <div class="filter-bar">
@@ -1714,6 +1722,7 @@
           <option value="electricity">Electricity</option>
           <option value="garbage">Garbage</option>
           <option value="repairs">Repairs</option>
+          <option value="penalty">⏰ Late Penalties</option>
           <option value="other">Other</option>
         </select>
       </div>
@@ -2151,6 +2160,83 @@
           </div>
         </div>
 
+        <!-- Late Rent Penalty & Grace Period Rules -->
+        <div class="unit-card" id="latePenaltySettingsCard">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <h3 style="margin: 0;">⏰ Late Rent Penalty &amp; Grace Period</h3>
+              <p class="small-meta">Automatically assess and enforce late fees for tenants paying after the agreed cut-off day.</p>
+            </div>
+            <div id="lateFeeStatusBadge"></div>
+          </div>
+
+          <form id="lateFeeSettingsForm" style="display: flex; flex-direction: column; gap: 0.85rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: var(--bg-surface-alt); border-radius: 6px; border: 1px solid var(--border-main);">
+              <input type="checkbox" id="settingLateFeeEnabled" style="width: 1.1rem; height: 1.1rem; accent-color: var(--brand-primary); cursor: pointer;">
+              <div>
+                <label for="settingLateFeeEnabled" style="font-weight: 600; font-size: 0.875rem; cursor: pointer; display: block; margin: 0;">
+                  Enable Late Payment Penalty Engine
+                </label>
+                <span class="small-meta">Flag overdue units and allow one-click bulk assessment of late fee bills.</span>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="settingLateFeeGraceDay">Grace Period Cut-Off Day</label>
+                <select id="settingLateFeeGraceDay" class="form-select">
+                  <option value="5">5th of the month (Standard Kenyan)</option>
+                  <option value="7">7th of the month</option>
+                  <option value="10">10th of the month</option>
+                  <option value="15">15th of the month</option>
+                  <option value="1">1st of the month (No grace period)</option>
+                </select>
+                <span class="field-hint">Penalties apply to rent unpaid by midnight of this date.</span>
+              </div>
+
+              <div class="form-group">
+                <label for="settingLateFeeType">Penalty Calculation Method</label>
+                <select id="settingLateFeeType" class="form-select">
+                  <option value="flat">Fixed Flat Fee (e.g. KES 500)</option>
+                  <option value="percent">Percentage (%)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="settingLateFeeValue" id="settingLateFeeValueLabel">Penalty Amount (KES)</label>
+                <input type="number" id="settingLateFeeValue" class="form-input" min="0" step="50" placeholder="500">
+                <span class="field-hint" id="settingLateFeeValueHint">Fixed fee added to tenant statement</span>
+              </div>
+
+              <div class="form-group">
+                <label for="settingLateFeeBase">Calculate Percentage On</label>
+                <select id="settingLateFeeBase" class="form-select">
+                  <option value="rent">Full Monthly Rent</option>
+                  <option value="balance">Remaining Unpaid Balance</option>
+                </select>
+                <span class="field-hint">Applies only when using percentage method.</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="settingLateFeeNoticeClause">Tenancy Agreement &amp; Reminder Clause</label>
+              <input type="text" id="settingLateFeeNoticeClause" class="form-input" placeholder="e.g. Rent is strictly due on or before the 5th. A late fee of KES 500 applies thereafter.">
+              <span class="field-hint">Appears on Tenancy Agreements, Statements, and WhatsApp payment reminders.</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem;">
+              <button type="submit" class="btn btn-primary">
+                💾 Save Late Fee Policy
+              </button>
+              <button type="button" class="btn btn-secondary" id="settingsAssessLateFeesBtn">
+                ⚡ Assess Overdue Fees for <span class="current-month-label">This Month</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
         <!-- Export & Backup -->
         <div class="unit-card">
           <h3 style="margin-bottom: 0.75rem;">💾 Data Backup &amp; Excel Export</h3>
@@ -2392,6 +2478,7 @@
                 <option value="electricity">Electricity</option>
                 <option value="garbage">Garbage</option>
                 <option value="repairs">Repairs</option>
+                <option value="penalty">⏰ Late Payment Penalty</option>
                 <option value="other">Other</option>
               </select>
             </div>
@@ -2948,6 +3035,67 @@
   </div>
 
   <!-- ========================================================================
+       MODAL: ASSESS & APPLY LATE RENT PENALTIES
+       ======================================================================== -->
+  <div class="modal-backdrop" id="lateFeeModal" role="dialog" aria-modal="true" aria-labelledby="lateFeeModalTitle">
+    <div class="modal-dialog" style="max-width: 860px; width: 96%;">
+      <div class="modal-header">
+        <div>
+          <h3 id="lateFeeModalTitle">⏰ Assess Late Rent Penalties</h3>
+          <p class="small-meta">Identify overdue accounts past grace period &amp; apply administrative late fees</p>
+        </div>
+        <button class="modal-close-btn" data-close-modal="lateFeeModal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+        <!-- Policy Banner -->
+        <div id="lateFeeModalPolicyBanner" style="background: var(--bg-surface-alt); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 0.85rem 1rem; margin-bottom: 1.25rem;">
+          <!-- Dynamically populated -->
+        </div>
+
+        <!-- Table of Units -->
+        <div class="table-container" style="border: 1px solid var(--border-main); border-radius: var(--radius-sm); margin-bottom: 1rem;">
+          <table class="data-table" id="lateFeeAssessmentTable" style="margin: 0;">
+            <thead>
+              <tr>
+                <th style="width: 40px; text-align: center;">
+                  <input type="checkbox" id="selectAllLateFeesCheck" checked style="cursor: pointer; width: 1rem; height: 1rem; accent-color: var(--brand-primary);" title="Select/Deselect all eligible">
+                </th>
+                <th>Unit</th>
+                <th>Tenant &amp; Contact</th>
+                <th style="text-align: right;">Monthly Rent</th>
+                <th style="text-align: right;">Unpaid Balance</th>
+                <th>Penalty Status</th>
+                <th style="text-align: right; width: 140px;">Penalty to Charge</th>
+              </tr>
+            </thead>
+            <tbody id="lateFeeTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Summary & Warning Note -->
+        <div id="lateFeeSummaryNotice" style="background: #fdfbf7; border: 1px solid #ded8ca; border-radius: var(--radius-sm); padding: 0.75rem 1rem; font-size: 0.825rem; color: #2c3e35; line-height: 1.5; margin-bottom: 0.5rem;">
+          💡 <strong>How Penalties Work:</strong> When you click <em>Apply Selected Penalties</em>, an official <strong>Late Fee</strong> bill is automatically logged against each selected unit for this month. The fee immediately reflects on the tenant's balance, statement, receipt history, and payment reminders.
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <button type="button" class="btn btn-secondary" data-close-modal="lateFeeModal">Close</button>
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <div id="lateFeeModalTotalBadge" style="font-weight: 700; font-size: 0.95rem;">
+            Total: KES 0
+          </div>
+          <button type="button" class="btn btn-primary" id="applySelectedLateFeesBtn">
+            ⚡ Apply Selected Penalties to Statements
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
        MODAL 7: HOW THIS WORKS EXPLAINER
        ======================================================================== -->
   <div class="modal-backdrop" id="howItWorksModal" role="dialog" aria-modal="true" aria-labelledby="howItWorksModalTitle">
@@ -3055,6 +3203,14 @@
         security: {
           maskPhoneNumbers: false
         },
+        lateFeePolicy: {
+          enabled: true,
+          graceDay: 5,
+          type: 'flat',
+          value: 500,
+          base: 'rent',
+          noticeClause: 'Rent is strictly due on or before the 5th of each month. Late accounts incur an administrative penalty of KES 500.'
+        },
         hasSeenOnboarding: false
       };
 
@@ -3074,6 +3230,16 @@
             if (!Array.isArray(appState.payments)) appState.payments = [];
             if (!Array.isArray(appState.bills)) appState.bills = [];
             if (!appState.security) appState.security = { maskPhoneNumbers: false };
+            if (!appState.lateFeePolicy) {
+              appState.lateFeePolicy = {
+                enabled: true,
+                graceDay: 5,
+                type: 'flat',
+                value: 500,
+                base: 'rent',
+                noticeClause: 'Rent is strictly due on or before the 5th of each month. Late accounts incur an administrative penalty of KES 500.'
+              };
+            }
           } else {
             appState = JSON.parse(JSON.stringify(defaultState));
           }
@@ -4085,6 +4251,278 @@
         document.getElementById('printablePaymentLedgerArea').innerHTML = html;
       }
 
+      // --- LATE RENT PENALTY & GRACE PERIOD ENGINE ---
+      function getLateFeePolicy() {
+        if (!appState.lateFeePolicy) {
+          appState.lateFeePolicy = {
+            enabled: true,
+            graceDay: 5,
+            type: 'flat',
+            value: 500,
+            base: 'rent',
+            noticeClause: 'Rent is strictly due on or before the 5th of each month. Late accounts incur an administrative penalty of KES 500.'
+          };
+        }
+        return appState.lateFeePolicy;
+      }
+
+      function calculateUnitLateFee(unit, month) {
+        const policy = getLateFeePolicy();
+        const fin = calculateUnitFinancials(unit, month);
+
+        // Check if a penalty bill has already been billed for this unit in this month
+        const existingPenaltyBill = appState.bills.find(b => b.unitId === unit.id && b.month === month && b.category === 'penalty');
+
+        let calculatedAmount = 0;
+        if (policy.type === 'flat') {
+          calculatedAmount = Number(policy.value) || 500;
+        } else {
+          // percentage
+          const baseAmount = policy.base === 'balance' ? Math.max(0, fin.closingBalance) : Number(unit.monthlyRent) || 0;
+          calculatedAmount = Math.round(baseAmount * (Number(policy.value) || 5) / 100);
+        }
+
+        const isOverdue = fin.closingBalance > 0;
+        const isEligible = !existingPenaltyBill && isOverdue && !unit.isVacant;
+
+        return {
+          unit,
+          fin,
+          existingPenaltyBill,
+          calculatedAmount,
+          isOverdue,
+          isEligible,
+          alreadyBilled: Boolean(existingPenaltyBill)
+        };
+      }
+
+      function handleOpenLateFeeModal(targetMonth = '') {
+        const month = targetMonth || activeMonth;
+        renderLateFeeModal(month);
+        openModal('lateFeeModal');
+      }
+
+      function renderLateFeeModal(targetMonth = '') {
+        const month = targetMonth || activeMonth;
+        const policy = getLateFeePolicy();
+        const tbody = document.getElementById('lateFeeTableBody');
+        const banner = document.getElementById('lateFeeModalPolicyBanner');
+
+        // Check today's date vs grace cut-off day
+        const today = new Date();
+        const currentYearMonth = today.toISOString().substring(0, 7);
+        const currentDay = today.getDate();
+        const isCurrentMonth = month === currentYearMonth;
+        const graceDay = policy.graceDay || 5;
+
+        let statusTag = '';
+        if (isCurrentMonth) {
+          if (currentDay > graceDay) {
+            statusTag = `<span style="background: #b91c1c; color: white; padding: 0.2rem 0.55rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem;">⏰ PAST GRACE PERIOD (Today: Day ${currentDay})</span>`;
+          } else {
+            statusTag = `<span style="background: #047857; color: white; padding: 0.2rem 0.55rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem;">✓ WITHIN GRACE PERIOD (Until Day ${graceDay})</span>`;
+          }
+        } else if (month < currentYearMonth) {
+          statusTag = `<span style="background: #374151; color: white; padding: 0.2rem 0.55rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem;">📅 HISTORICAL MONTH (Overdue Audit)</span>`;
+        } else {
+          statusTag = `<span style="background: #4b5563; color: white; padding: 0.2rem 0.55rem; border-radius: 4px; font-weight: 700; font-size: 0.75rem;">🔮 FUTURE MONTH</span>`;
+        }
+
+        const policyDesc = policy.type === 'flat' 
+          ? `Fixed KES ${Number(policy.value || 500).toLocaleString('en-KE')} per overdue unit` 
+          : `${policy.value || 5}% of ${policy.base === 'balance' ? 'unpaid balance' : 'monthly rent'}`;
+
+        banner.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-main);">Month: ${formatMonthName(month)}</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">
+                Policy: <strong>${escapeHTML(policyDesc)}</strong> &bull; Grace Day: <strong>${graceDay}th of month</strong>
+              </div>
+            </div>
+            <div>${statusTag}</div>
+          </div>
+        `;
+
+        const occupiedUnits = appState.units.filter(u => !u.isVacant);
+        if (occupiedUnits.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted); font-style: italic;">
+                No occupied units found to assess.
+              </td>
+            </tr>
+          `;
+          updateLateFeeTotalBadge();
+          return;
+        }
+
+        let rowsHtml = '';
+        occupiedUnits.forEach(unit => {
+          const res = calculateUnitLateFee(unit, month);
+
+          let statusHtml = '';
+          let checkboxHtml = '';
+          let feeInputHtml = '';
+
+          if (res.alreadyBilled) {
+            statusHtml = `<span style="background: #eef3ef; color: #047857; border: 1px solid #c2dbcd; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">✅ Billed KES ${res.existingPenaltyBill.amount.toLocaleString('en-KE')}</span>`;
+            checkboxHtml = `<input type="checkbox" disabled style="opacity: 0.4;">`;
+            feeInputHtml = `<span style="font-family: monospace; color: var(--text-dim);">-</span>`;
+          } else if (res.isEligible) {
+            statusHtml = `<span style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">⚠️ Overdue (+KES ${res.calculatedAmount.toLocaleString('en-KE')})</span>`;
+            checkboxHtml = `<input type="checkbox" class="late-fee-unit-check" data-unit-id="${unit.id}" checked style="cursor: pointer; width: 1rem; height: 1rem; accent-color: var(--brand-primary);">`;
+            feeInputHtml = `<input type="number" class="form-input late-fee-amount-input" data-unit-id="${unit.id}" value="${res.calculatedAmount}" min="0" step="50" style="padding: 0.25rem 0.4rem; text-align: right; width: 110px; font-weight: 600;">`;
+          } else {
+            statusHtml = `<span style="background: #f3f4f6; color: #4b5563; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">✓ Paid Up / Nil Arrears</span>`;
+            checkboxHtml = `<input type="checkbox" disabled style="opacity: 0.4;">`;
+            feeInputHtml = `<span style="font-family: monospace; color: var(--text-dim);">0</span>`;
+          }
+
+          rowsHtml += `
+            <tr style="${res.isEligible ? 'background: #fffdfb;' : ''}">
+              <td style="text-align: center;">${checkboxHtml}</td>
+              <td><strong>${escapeHTML(unit.name)}</strong></td>
+              <td>
+                <div>${escapeHTML(unit.tenantName || 'No tenant name')}</div>
+                ${unit.tenantPhone ? `<div class="small-meta">${escapeHTML(displayTenantPhone(unit.tenantPhone))}</div>` : ''}
+              </td>
+              <td style="text-align: right;" class="tabular-nums">${formatKES(unit.monthlyRent)}</td>
+              <td style="text-align: right; font-weight: 600; color: ${res.fin.closingBalance > 0 ? 'var(--alert-owing)' : 'var(--settled)'};" class="tabular-nums">
+                ${res.fin.closingBalance > 0 ? formatKES(res.fin.closingBalance) : 'Settled'}
+              </td>
+              <td>${statusHtml}</td>
+              <td style="text-align: right;">${feeInputHtml}</td>
+            </tr>
+          `;
+        });
+
+        tbody.innerHTML = rowsHtml;
+        attachLateFeeModalListeners();
+        updateLateFeeTotalBadge();
+      }
+
+      function attachLateFeeModalListeners() {
+        const selectAll = document.getElementById('selectAllLateFeesCheck');
+        if (selectAll) {
+          selectAll.addEventListener('change', () => {
+            document.querySelectorAll('.late-fee-unit-check:not(:disabled)').forEach(ch => {
+              ch.checked = selectAll.checked;
+            });
+            updateLateFeeTotalBadge();
+          });
+        }
+
+        document.querySelectorAll('.late-fee-unit-check').forEach(ch => {
+          ch.addEventListener('change', updateLateFeeTotalBadge);
+        });
+
+        document.querySelectorAll('.late-fee-amount-input').forEach(inp => {
+          inp.addEventListener('input', updateLateFeeTotalBadge);
+        });
+      }
+
+      function updateLateFeeTotalBadge() {
+        let total = 0;
+        let count = 0;
+        document.querySelectorAll('.late-fee-unit-check:checked').forEach(ch => {
+          const unitId = ch.dataset.unitId;
+          const input = document.querySelector(`.late-fee-amount-input[data-unit-id="${unitId}"]`);
+          const amt = input ? Number(input.value) || 0 : 0;
+          total += amt;
+          count++;
+        });
+
+        const badge = document.getElementById('lateFeeModalTotalBadge');
+        if (badge) {
+          badge.textContent = `Selected: ${count} unit${count === 1 ? '' : 's'} | Total Fees: KES ${total.toLocaleString('en-KE')}`;
+        }
+      }
+
+      function applySelectedLateFees() {
+        const checkedBoxes = Array.from(document.querySelectorAll('.late-fee-unit-check:checked'));
+        if (checkedBoxes.length === 0) {
+          showToast('No units selected to apply late fees.', 'warning');
+          return;
+        }
+
+        const policy = getLateFeePolicy();
+        const todayStr = new Date().toISOString().substring(0, 10);
+        let appliedCount = 0;
+        let appliedTotal = 0;
+
+        checkedBoxes.forEach(ch => {
+          const unitId = ch.dataset.unitId;
+          const unit = appState.units.find(u => u.id === unitId);
+          const input = document.querySelector(`.late-fee-amount-input[data-unit-id="${unitId}"]`);
+          const amt = input ? Number(input.value) || 0 : 0;
+
+          if (unit && amt > 0) {
+            const bill = {
+              id: generateId('bill_'),
+              unitId: unit.id,
+              category: 'penalty',
+              month: activeMonth,
+              date: todayStr,
+              amount: amt,
+              description: `Late Rent Penalty (Past ${policy.graceDay || 5}th grace period)`,
+              createdAt: new Date().toISOString()
+            };
+            appState.bills.push(bill);
+            appliedCount++;
+            appliedTotal += amt;
+          }
+        });
+
+        if (appliedCount > 0) {
+          saveState();
+          closeModal('lateFeeModal');
+          renderAll();
+          showToast(`Successfully applied KES ${appliedTotal.toLocaleString('en-KE')} late penalties across ${appliedCount} unit${appliedCount === 1 ? '' : 's'}!`);
+        } else {
+          showToast('No penalty amounts entered.', 'warning');
+        }
+      }
+
+      function renderLatePenaltySettings() {
+        const policy = getLateFeePolicy();
+        const enabledCheck = document.getElementById('settingLateFeeEnabled');
+        const graceSelect = document.getElementById('settingLateFeeGraceDay');
+        const typeSelect = document.getElementById('settingLateFeeType');
+        const valueInput = document.getElementById('settingLateFeeValue');
+        const baseSelect = document.getElementById('settingLateFeeBase');
+        const clauseInput = document.getElementById('settingLateFeeNoticeClause');
+        const badge = document.getElementById('lateFeeStatusBadge');
+
+        if (enabledCheck) enabledCheck.checked = Boolean(policy.enabled);
+        if (graceSelect) graceSelect.value = String(policy.graceDay || 5);
+        if (typeSelect) typeSelect.value = policy.type || 'flat';
+        if (valueInput) valueInput.value = policy.value !== undefined ? policy.value : 500;
+        if (baseSelect) baseSelect.value = policy.base || 'rent';
+        if (clauseInput) clauseInput.value = policy.noticeClause || '';
+
+        // Dynamic labels based on type
+        const valLabel = document.getElementById('settingLateFeeValueLabel');
+        const valHint = document.getElementById('settingLateFeeValueHint');
+        if (valLabel && valHint) {
+          if (policy.type === 'percent') {
+            valLabel.textContent = 'Penalty Percentage (%)';
+            valHint.textContent = 'Percentage added to tenant statement (e.g. 5%)';
+          } else {
+            valLabel.textContent = 'Penalty Amount (KES)';
+            valHint.textContent = 'Fixed fee added to tenant statement';
+          }
+        }
+
+        if (badge) {
+          if (policy.enabled) {
+            badge.innerHTML = `<span style="background:#d1fae5;color:#065f46;padding:0.25rem 0.65rem;border-radius:999px;font-size:0.75rem;font-weight:700;">⏰ ACTIVE (${policy.graceDay || 5}th Cut-off)</span>`;
+          } else {
+            badge.innerHTML = '<span style="background:var(--bg-elevated);color:var(--text-muted);border:1px solid var(--border-main);padding:0.25rem 0.65rem;border-radius:999px;font-size:0.75rem;font-weight:600;">⚪ DISABLED</span>';
+          }
+        }
+      }
+
       // --- TENANT MOVE-OUT & DEPOSIT SETTLEMENT HELPERS ---
       function handleOpenVacate(unitId = '') {
         const select = document.getElementById('vacSelectUnit');
@@ -5070,6 +5508,7 @@
             electricity: '⚡ Electricity',
             garbage: '🗑️ Garbage',
             repairs: '🛠️ Repairs',
+            penalty: '⏰ Late Penalty',
             other: '📦 Other'
           };
 
@@ -5434,6 +5873,7 @@
 
         // Render Security Card details
         renderSecuritySettings();
+        renderLatePenaltySettings();
       }
 
       function renderSecuritySettings() {
@@ -7082,6 +7522,60 @@
               }
             }
           });
+        }
+
+        // Late Rent Penalty & Grace Period Listeners
+        const openLateFeeBtn = document.getElementById('openLateFeeModalBtn');
+        if (openLateFeeBtn) {
+          openLateFeeBtn.addEventListener('click', () => handleOpenLateFeeModal());
+        }
+
+        const dashLateFeeBtn = document.getElementById('dashLateFeeBtn');
+        if (dashLateFeeBtn) {
+          dashLateFeeBtn.addEventListener('click', () => handleOpenLateFeeModal());
+        }
+
+        const settingsAssessBtn = document.getElementById('settingsAssessLateFeesBtn');
+        if (settingsAssessBtn) {
+          settingsAssessBtn.addEventListener('click', () => handleOpenLateFeeModal());
+        }
+
+        const lateFeeForm = document.getElementById('lateFeeSettingsForm');
+        if (lateFeeForm) {
+          lateFeeForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const policy = getLateFeePolicy();
+            policy.enabled = document.getElementById('settingLateFeeEnabled').checked;
+            policy.graceDay = Number(document.getElementById('settingLateFeeGraceDay').value) || 5;
+            policy.type = document.getElementById('settingLateFeeType').value;
+            policy.value = Number(document.getElementById('settingLateFeeValue').value) || 0;
+            policy.base = document.getElementById('settingLateFeeBase').value;
+            policy.noticeClause = document.getElementById('settingLateFeeNoticeClause').value.trim();
+
+            saveState();
+            renderLatePenaltySettings();
+            showToast('Late rent penalty policy saved successfully!');
+          });
+        }
+
+        const settingLateFeeType = document.getElementById('settingLateFeeType');
+        if (settingLateFeeType) {
+          settingLateFeeType.addEventListener('change', () => {
+            const valLabel = document.getElementById('settingLateFeeValueLabel');
+            const valHint = document.getElementById('settingLateFeeValueHint');
+            if (settingLateFeeType.value === 'percent') {
+              valLabel.textContent = 'Penalty Percentage (%)';
+              valHint.textContent = 'Percentage added to tenant statement (e.g. 5%)';
+            } else {
+              valLabel.textContent = 'Penalty Amount (KES)';
+              valHint.textContent = 'Fixed fee added to tenant statement';
+            }
+          });
+        }
+
+        const applyLateFeesBtn = document.getElementById('applySelectedLateFeesBtn');
+        if (applyLateFeesBtn) {
+          applyLateFeesBtn.addEventListener('click', applySelectedLateFees);
         }
 
         // Tenant Move-Out & Deposit Settlement Listeners
