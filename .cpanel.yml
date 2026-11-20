@@ -1,0 +1,9 @@
+---
+deployment:
+  tasks:
+    # Set DEPLOYPATH to public_html or your subdomain in cPanel
+    - export CPANEL_ROOT=$(pwd -P | sed 's|/repositories/.*||')
+    - export DEPLOYPATH=$CPANEL_ROOT/public_html
+    - /bin/mkdir -p $DEPLOYPATH/rentbook
+    - /bin/cp -f index.html rentbook.html .htaccess $DEPLOYPATH/
+    - /bin/cp -f index.html rentbook.html .htaccess $DEPLOYPATH/rentbook/
