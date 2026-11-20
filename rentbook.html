@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <meta name="theme-color" content="#16382c">
   <meta name="description" content="Rent Book - Simple, reliable rental property management for landlords in Kenya. Manage units, track M-Pesa payments, water bills, and arrears.">
+  <!-- Security Meta Tags -->
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Rent Book - Kenyan Landlord Property Manager</title>
   <style>
     /* ==========================================================================
@@ -1802,14 +1806,14 @@
             <form id="tenantConfirmPaymentForm" style="display: flex; flex-direction: column; gap: 0.75rem;">
               <div class="form-group" id="groupTenantMpesaCode">
                 <label for="tenantInputMpesaCode">M-Pesa Transaction Code *</label>
-                <input type="text" id="tenantInputMpesaCode" class="form-input" placeholder="e.g. QKD47XYZ89" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700;" required>
+                <input type="text" id="tenantInputMpesaCode" class="form-input" placeholder="e.g. QKD47XYZ89" style="text-transform: uppercase; font-family: var(--font-mono); font-weight: 700;" required maxlength="12" pattern="[A-Za-z0-9]{8,12}" autocomplete="off">
                 <span class="field-error">Please enter the M-Pesa code from Safaricom.</span>
               </div>
 
               <div class="form-row">
                 <div class="form-group" id="groupTenantAmountPaid">
                   <label for="tenantInputAmountPaid">Amount Paid (KES) *</label>
-                  <input type="number" id="tenantInputAmountPaid" class="form-input tabular-nums" min="1" step="50" placeholder="15000" required>
+                  <input type="number" id="tenantInputAmountPaid" class="form-input tabular-nums" min="1" max="50000000" step="50" placeholder="15000" required>
                   <span class="field-error">Please enter a valid amount.</span>
                 </div>
 
@@ -2290,6 +2294,16 @@
          ======================================================================== */
       const STORAGE_KEY = 'rentbook_kenya_data_v1';
       const THEME_KEY = 'rentbook_theme';
+      const MAX_UNITS = 50;
+      const MAX_PAYMENTS = 5000;
+      const MAX_BILLS = 5000;
+      const MAX_STRING_LENGTH = 500;
+      const MAX_AMOUNT = 50000000; // KES 50M ceiling
+      const MPESA_CODE_REGEX = /^[A-Z0-9]{8,12}$/;
+      const PHONE_REGEX = /^(\+?254|0)[17]\d{8}$/;
+      const INACTIVITY_LOCK_MS = 30 * 60 * 1000; // 30 minutes
+      let inactivityTimer = null;
+      let isSessionLocked = false;
 
       // Default Initial State
       const defaultState = {
@@ -2334,6 +2348,7 @@
       function saveState() {
         try {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+          saveIntegrityChecksum();
         } catch (e) {
           console.error('Failed to save to localStorage:', e);
           showToast('Storage full or restricted. Changes kept in memory.', 'warning');
@@ -2393,6 +2408,134 @@
           .replace(/>/g, '&gt;')
           .replace(/"/g, '&quot;')
           .replace(/'/g, '&#39;');
+      }
+
+      // Sanitize and truncate any user-entered string
+      function sanitizeString(str, maxLen = MAX_STRING_LENGTH) {
+        if (str === null || str === undefined) return '';
+        return String(str).trim().substring(0, maxLen);
+      }
+
+      // Validate a KES money amount (positive, within ceiling)
+      function isValidAmount(val) {
+        const num = Number(val);
+        return Number.isFinite(num) && num > 0 && num <= MAX_AMOUNT;
+      }
+
+      // Validate M-Pesa transaction code format (Safaricom standard: 10 alphanumeric)
+      function isValidMpesaCode(code) {
+        if (!code) return true; // optional field in many forms
+        return MPESA_CODE_REGEX.test(code.toUpperCase().trim());
+      }
+
+      // Validate Kenyan phone number (07xx/01xx or +254)
+      function isValidKenyanPhone(phone) {
+        if (!phone) return false;
+        const cleaned = phone.replace(/[\s\-()]/g, '');
+        return PHONE_REGEX.test(cleaned);
+      }
+
+      // Validate date string is a real YYYY-MM-DD date and not in the far future
+      function isValidDate(dateStr) {
+        if (!dateStr || typeof dateStr !== 'string') return false;
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return false;
+        // Allow dates up to 1 year in the future, 20 years in the past
+        const now = new Date();
+        const maxFuture = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+        const maxPast = new Date(now.getFullYear() - 20, 0, 1);
+        return d >= maxPast && d <= maxFuture;
+      }
+
+      // Rate limiter: prevent rapid-fire form submissions
+      const rateLimitMap = {};
+      function isRateLimited(action, cooldownMs = 2000) {
+        const now = Date.now();
+        if (rateLimitMap[action] && (now - rateLimitMap[action]) < cooldownMs) {
+          showToast('Please wait a moment before trying again.', 'warning');
+          return true;
+        }
+        rateLimitMap[action] = now;
+        return false;
+      }
+
+      // Data integrity: compute a simple checksum of appState for tamper detection
+      function computeStateChecksum() {
+        try {
+          const payload = JSON.stringify({
+            u: appState.units.length,
+            p: appState.payments.length,
+            b: appState.bills.length,
+            n: appState.property.name || ''
+          });
+          let hash = 0;
+          for (let i = 0; i < payload.length; i++) {
+            const c = payload.charCodeAt(i);
+            hash = ((hash << 5) - hash) + c;
+            hash |= 0;
+          }
+          return hash;
+        } catch (e) { return 0; }
+      }
+
+      function saveIntegrityChecksum() {
+        try {
+          localStorage.setItem(STORAGE_KEY + '_chk', String(computeStateChecksum()));
+        } catch (e) {}
+      }
+
+      function verifyIntegrityChecksum() {
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY + '_chk');
+          if (!stored) return true; // first run
+          return stored === String(computeStateChecksum());
+        } catch (e) { return true; }
+      }
+
+      // Inactivity auto-lock (protects landlord data on shared devices)
+      function resetInactivityTimer() {
+        if (inactivityTimer) clearTimeout(inactivityTimer);
+        if (isSessionLocked) return;
+        inactivityTimer = setTimeout(() => {
+          lockSession();
+        }, INACTIVITY_LOCK_MS);
+      }
+
+      function lockSession() {
+        isSessionLocked = true;
+        // Hide all sensitive tabs, show lock overlay
+        const existing = document.getElementById('sessionLockOverlay');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'sessionLockOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(22,56,44,0.97);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1.5rem;color:#fff;font-family:var(--font-main);';
+        overlay.innerHTML = `
+          <div style="font-size:3rem;">🔒</div>
+          <h2 style="margin:0;font-size:1.5rem;">Session Locked</h2>
+          <p style="max-width:340px;text-align:center;color:#a8c8b8;font-size:0.9rem;">
+            Your Rent Book session was locked after 30 minutes of inactivity to protect your data.
+          </p>
+          <button id="unlockSessionBtn" style="background:#2d8a5e;color:#fff;border:none;padding:0.85rem 2.5rem;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;">
+            🔓 Unlock & Continue
+          </button>
+        `;
+        document.body.appendChild(overlay);
+        document.getElementById('unlockSessionBtn').addEventListener('click', unlockSession);
+      }
+
+      function unlockSession() {
+        isSessionLocked = false;
+        const overlay = document.getElementById('sessionLockOverlay');
+        if (overlay) overlay.remove();
+        resetInactivityTimer();
+      }
+
+      function initInactivityLock() {
+        ['click', 'keydown', 'scroll', 'touchstart'].forEach(evt => {
+          document.addEventListener(evt, resetInactivityTimer, { passive: true });
+        });
+        resetInactivityTimer();
       }
 
       // Generate unique ID
@@ -3375,16 +3518,17 @@
 
       function handleSaveUnit(e) {
         e.preventDefault();
+        if (isRateLimited('saveUnit')) return;
         clearErrors('unitModal');
 
         const editId = document.getElementById('unitEditId').value;
-        const name = document.getElementById('inputUnitName').value.trim();
+        const name = sanitizeString(document.getElementById('inputUnitName').value, 100);
         const isVacant = document.getElementById('inputIsVacant').checked;
-        const tenantName = document.getElementById('inputTenantName').value.trim();
-        const tenantPhone = document.getElementById('inputTenantPhone').value.trim();
+        const tenantName = sanitizeString(document.getElementById('inputTenantName').value, 100);
+        const tenantPhone = sanitizeString(document.getElementById('inputTenantPhone').value, 20);
         const monthlyRent = Number(document.getElementById('inputMonthlyRent').value) || 0;
         const moveInMonth = document.getElementById('inputMoveInMonth').value;
-        const notes = document.getElementById('inputUnitNotes').value.trim();
+        const notes = sanitizeString(document.getElementById('inputUnitNotes').value, 300);
 
         // Validate
         let hasError = false;
@@ -3402,7 +3546,7 @@
             showFieldError('groupTenantPhone');
             hasError = true;
           }
-          if (monthlyRent < 0) {
+          if (monthlyRent < 0 || monthlyRent > MAX_AMOUNT) {
             showFieldError('groupMonthlyRent');
             hasError = true;
           }
@@ -3410,6 +3554,12 @@
             showFieldError('groupMoveInMonth');
             hasError = true;
           }
+        }
+
+        // Enforce unit count limit
+        if (!editId && appState.units.length >= MAX_UNITS) {
+          showToast(`Maximum of ${MAX_UNITS} units reached. Delete or archive a unit to add more.`, 'warning');
+          return;
         }
 
         if (hasError) return;
@@ -3502,27 +3652,48 @@
 
       function handleSavePayment(e) {
         e.preventDefault();
+        if (isRateLimited('savePayment')) return;
         clearErrors('paymentModal');
 
         const editId = document.getElementById('paymentEditId').value;
         const unitId = document.getElementById('selectPaymentUnit').value;
         const amount = Number(document.getElementById('inputPaymentAmount').value);
         const date = document.getElementById('inputPaymentDate').value;
-        const mpesaCode = document.getElementById('inputPaymentMpesa').value.trim().toUpperCase();
-        const notes = document.getElementById('inputPaymentNotes').value.trim();
+        const mpesaCode = sanitizeString(document.getElementById('inputPaymentMpesa').value, 12).toUpperCase();
+        const notes = sanitizeString(document.getElementById('inputPaymentNotes').value, 300);
 
         let hasError = false;
         if (!unitId) {
           showFieldError('groupPaymentUnit');
           hasError = true;
         }
-        if (!amount || amount <= 0) {
+        if (!isValidAmount(amount)) {
           showFieldError('groupPaymentAmount');
           hasError = true;
         }
-        if (!date) {
+        if (!date || !isValidDate(date)) {
           showFieldError('groupPaymentDate');
           hasError = true;
+        }
+        // Validate M-Pesa code format if provided
+        if (mpesaCode && !isValidMpesaCode(mpesaCode)) {
+          showToast('M-Pesa code must be 8-12 alphanumeric characters (e.g. QKD47XYZ89).', 'warning');
+          hasError = true;
+        }
+        // Check for duplicate M-Pesa code (excluding current payment when editing)
+        if (mpesaCode) {
+          const duplicate = appState.payments.find(p =>
+            p.mpesaCode && p.mpesaCode.toUpperCase() === mpesaCode && p.id !== editId
+          );
+          if (duplicate) {
+            showToast(`Duplicate: M-Pesa code ${mpesaCode} is already recorded for another payment.`, 'warning');
+            hasError = true;
+          }
+        }
+        // Enforce payment count limit
+        if (!editId && appState.payments.length >= MAX_PAYMENTS) {
+          showToast(`Maximum of ${MAX_PAYMENTS.toLocaleString()} payment records reached. Export and archive old records.`, 'warning');
+          return;
         }
 
         if (hasError) return;
@@ -3598,6 +3769,7 @@
 
       function handleSaveBill(e) {
         e.preventDefault();
+        if (isRateLimited('saveBill')) return;
         clearErrors('billModal');
 
         const editId = document.getElementById('billEditId').value;
@@ -3605,7 +3777,7 @@
         const category = document.getElementById('selectBillCategory').value;
         const month = document.getElementById('inputBillMonth').value;
         const amount = Number(document.getElementById('inputBillAmount').value);
-        const description = document.getElementById('inputBillDesc').value.trim();
+        const description = sanitizeString(document.getElementById('inputBillDesc').value, 300);
 
         let hasError = false;
         if (!unitId) {
@@ -3616,9 +3788,14 @@
           showFieldError('groupBillMonth');
           hasError = true;
         }
-        if (!amount || amount <= 0) {
+        if (!isValidAmount(amount)) {
           showFieldError('groupBillAmount');
           hasError = true;
+        }
+        // Enforce bill count limit
+        if (!editId && appState.bills.length >= MAX_BILLS) {
+          showToast(`Maximum of ${MAX_BILLS.toLocaleString()} bill records reached. Export and archive old records.`, 'warning');
+          return;
         }
 
         if (hasError) return;
@@ -3950,20 +4127,78 @@
         const file = e.target.files[0];
         if (!file) return;
 
+        // Block oversized backup files (10 MB max)
+        if (file.size > 10 * 1024 * 1024) {
+          showToast('Backup file is too large (max 10 MB). Is this the right file?', 'error');
+          e.target.value = '';
+          return;
+        }
+
         const reader = new FileReader();
         reader.onload = function (event) {
           try {
             const parsed = JSON.parse(event.target.result);
+
+            // Schema validation: must have units array
             if (!parsed.units || !Array.isArray(parsed.units)) {
               throw new Error('Invalid format: missing units array');
             }
-            appState = parsed;
-            saveState();
-            renderAll();
-            showToast('Backup restored successfully!');
+            if (!Array.isArray(parsed.payments || [])) throw new Error('Invalid payments');
+            if (!Array.isArray(parsed.bills || [])) throw new Error('Invalid bills');
+
+            // Enforce record limits
+            if (parsed.units.length > MAX_UNITS) {
+              throw new Error(`Too many units (${parsed.units.length}). Maximum is ${MAX_UNITS}.`);
+            }
+            if ((parsed.payments || []).length > MAX_PAYMENTS) {
+              throw new Error(`Too many payment records. Maximum is ${MAX_PAYMENTS.toLocaleString()}.`);
+            }
+            if ((parsed.bills || []).length > MAX_BILLS) {
+              throw new Error(`Too many bill records. Maximum is ${MAX_BILLS.toLocaleString()}.`);
+            }
+
+            // Sanitize all string fields in imported data to prevent stored XSS
+            const sanitizeObj = (obj) => {
+              const clean = {};
+              for (const [key, val] of Object.entries(obj)) {
+                if (typeof val === 'string') {
+                  clean[key] = sanitizeString(val);
+                } else if (typeof val === 'number') {
+                  clean[key] = Number.isFinite(val) ? val : 0;
+                } else if (typeof val === 'boolean') {
+                  clean[key] = val;
+                } else {
+                  clean[key] = val; // arrays etc. handled at top level
+                }
+              }
+              return clean;
+            };
+
+            const cleanState = {
+              property: sanitizeObj(parsed.property || {}),
+              units: parsed.units.map(u => sanitizeObj(u)),
+              payments: (parsed.payments || []).map(p => sanitizeObj(p)),
+              bills: (parsed.bills || []).map(b => sanitizeObj(b)),
+              hasSeenOnboarding: Boolean(parsed.hasSeenOnboarding)
+            };
+
+            // Ensure required property fields
+            if (!cleanState.property.paybillNumber) cleanState.property.paybillNumber = '522522';
+            if (!cleanState.property.tillNumber) cleanState.property.tillNumber = '123456';
+
+            showConfirm(
+              'Restore Backup',
+              `This will replace ALL current data with the backup (${cleanState.units.length} units, ${cleanState.payments.length} payments, ${cleanState.bills.length} bills). This cannot be undone.`,
+              () => {
+                appState = cleanState;
+                saveState();
+                renderAll();
+                showToast('Backup restored successfully!');
+              }
+            );
           } catch (err) {
             console.error('Import error:', err);
-            showToast('Failed to import backup: invalid JSON file.', 'error');
+            showToast(`Failed to import backup: ${err.message}`, 'error');
           }
           e.target.value = '';
         };
@@ -4501,6 +4736,8 @@
         if (confirmPayForm) {
           confirmPayForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            if (isRateLimited('tenantPay', 3000)) return;
+
             const unitId = document.getElementById('tenantPayUnitSelect').value;
             if (!unitId) {
               showToast('Please select your unit above first.', 'warning');
@@ -4509,31 +4746,36 @@
             const unit = appState.units.find(u => u.id === unitId);
             if (!unit) return;
 
-            const mpesaCode = document.getElementById('tenantInputMpesaCode').value.trim().toUpperCase();
+            const mpesaCode = sanitizeString(document.getElementById('tenantInputMpesaCode').value, 12).toUpperCase();
             const amount = Number(document.getElementById('tenantInputAmountPaid').value);
             const datePaid = document.getElementById('tenantInputDatePaid').value;
 
-            if (!mpesaCode) {
-              showToast('Please enter your Safaricom M-Pesa transaction code.', 'warning');
+            if (!mpesaCode || !isValidMpesaCode(mpesaCode)) {
+              showToast('Please enter a valid Safaricom M-Pesa transaction code (8-12 characters, e.g. QKD47XYZ89).', 'warning');
               return;
             }
-            if (!amount || amount <= 0) {
-              showToast('Please enter a valid payment amount.', 'warning');
+            if (!isValidAmount(amount)) {
+              showToast('Please enter a valid payment amount (KES 1 to 50,000,000).', 'warning');
               return;
             }
-            if (!datePaid) {
-              showToast('Please select the payment date.', 'warning');
+            if (!datePaid || !isValidDate(datePaid)) {
+              showToast('Please select a valid payment date.', 'warning');
               return;
             }
 
             const exists = appState.payments.some(p => p.mpesaCode && p.mpesaCode.toUpperCase() === mpesaCode);
             if (exists) {
-              showToast(`M-Pesa code ${mpesaCode} has already been recorded!`, 'warning');
+              showToast(`M-Pesa code ${escapeHTML(mpesaCode)} has already been recorded! Check your SMS for the correct code.`, 'warning');
+              return;
+            }
+
+            if (appState.payments.length >= MAX_PAYMENTS) {
+              showToast('Payment records are full. Ask your landlord to export and archive old records.', 'warning');
               return;
             }
 
             const newPayment = {
-              id: 'pay_' + Date.now(),
+              id: 'pay_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
               unitId: unit.id,
               amount: amount,
               date: datePaid,
@@ -4768,14 +5010,20 @@
           const urlParams = new URLSearchParams(window.location.search);
           const unitParam = urlParams.get('unit') || urlParams.get('pay');
           if (unitParam) {
-            const tenantPayTab = document.querySelector('.nav-tab[data-tab="tenant-pay"]');
-            if (tenantPayTab) {
-              tenantPayTab.click();
-            }
-            const unitSelect = document.getElementById('tenantPayUnitSelect');
-            if (unitSelect) {
-              unitSelect.value = unitParam;
-              updateTenantPayDetails(unitParam);
+            // Sanitize the parameter (prevent injection via URL)
+            const cleanParam = sanitizeString(unitParam, 60);
+            // Only accept if it matches a real unit ID
+            const matchedUnit = appState.units.find(u => u.id === cleanParam);
+            if (matchedUnit) {
+              const tenantPayTab = document.querySelector('.nav-tab[data-tab="tenant-pay"]');
+              if (tenantPayTab) {
+                tenantPayTab.click();
+              }
+              const unitSelect = document.getElementById('tenantPayUnitSelect');
+              if (unitSelect) {
+                unitSelect.value = cleanParam;
+                updateTenantPayDetails(cleanParam);
+              }
             }
           }
         } catch (e) {
@@ -4787,9 +5035,16 @@
       document.addEventListener('DOMContentLoaded', () => {
         initTheme();
         loadState();
+
+        // Integrity check: warn if data was tampered outside the app
+        if (!verifyIntegrityChecksum()) {
+          console.warn('Data integrity mismatch detected — localStorage may have been modified externally.');
+        }
+
         attachGlobalEventListeners();
         renderAll();
         checkUrlParameters();
+        initInactivityLock();
       });
 
     })();

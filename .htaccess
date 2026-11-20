@@ -1,23 +1,75 @@
-# Rent Book - cPanel Apache Configuration
+# ==============================================================================
+# Rent Book - Production Server Configuration & Security Hardening
+# Apache / LiteSpeed (cPanel)
+# ==============================================================================
 
 DirectoryIndex index.html rentbook.html
 
-# Enable UTF-8 default character set
+# 1. Character Encoding
 AddDefaultCharset UTF-8
 
-# Security Headers
-<IfModule mod_headers.c>
-    Header set X-Content-Type-Options "nosniff"
-    Header set X-XSS-Protection "1; mode=block"
-    Header set Referrer-Policy "strict-origin-when-cross-origin"
+# 2. Prevent Directory Listings
+Options -Indexes
+
+# 3. Block Sensitive Files & Scripts from Public Access
+<FilesMatch "(^\.|\.(json|log|ps1|py|sh|bak|zip|md|ya?ml)$)">
+    Require all denied
+</FilesMatch>
+
+# Specifically protect configuration and deploy scripts
+<Files "setup-cpanel-deploy.ps1">
+    Require all denied
+</Files>
+<Files "deploy_ftp.py">
+    Require all denied
+</Files>
+<Files "rent-book-cpanel.zip">
+    Require all denied
+</Files>
+<Files ".htaccess">
+    Require all denied
+</Files>
+<Files ".cpanel.yml">
+    Require all denied
+</Files>
+
+# 4. HTTPS Redirection (Force Secure SSL)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 </IfModule>
 
-# Enable GZIP Compression for fast mobile loading
+# 5. Security Headers (Defense in Depth)
+<IfModule mod_headers.c>
+    # Prevent clickjacking / UI redressing
+    Header always set X-Frame-Options "DENY"
+
+    # Prevent MIME-type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Cross-site scripting filter
+    Header always set X-XSS-Protection "1; mode=block"
+
+    # Referrer privacy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Permissions Policy (Disable unneeded browser hardware features)
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+
+    # Content Security Policy (Strict client sandbox)
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+
+    # HTTP Strict Transport Security (HSTS)
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS
+</IfModule>
+
+# 6. GZIP Compression for Fast Mobile Loading
 <IfModule mod_deflate.c>
     AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css application/javascript application/json
 </IfModule>
 
-# Cache headers
+# 7. Browser Caching
 <IfModule mod_expires.c>
     ExpiresActive On
     ExpiresDefault "access plus 1 day"
