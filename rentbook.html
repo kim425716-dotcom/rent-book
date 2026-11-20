@@ -1733,17 +1733,66 @@
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
         
-        <!-- Column 1: Unit Selection & Balance Breakdown -->
+        <!-- Column 1: Private Tenant Account & Arrears Breakdown -->
         <div class="unit-card" style="border-top: 4px solid var(--brand-primary);">
-          <h3 style="margin-bottom: 0.25rem;">1. Select Your Unit</h3>
-          <p class="small-meta" style="margin-bottom: 1rem;">Choose your house number to view current charges and arrears.</p>
+          
+          <!-- Private Lookup Card (shown when client has not yet verified their unit) -->
+          <div id="tenantLookupCard" style="display: block;">
+            <h3 style="margin-bottom: 0.25rem;">🔒 View My Unit &amp; Arrears</h3>
+            <p class="small-meta" style="margin-bottom: 1rem;">For your privacy, balances and arrears are strictly confidential. Enter your house number and phone number to access your account.</p>
 
-          <div class="form-group" style="margin-bottom: 1.25rem;">
-            <label for="tenantPayUnitSelect">House / Unit *</label>
-            <select id="tenantPayUnitSelect" class="form-select" style="font-weight: 600; font-size: 1rem;">
-              <option value="">-- Choose your unit --</option>
+            <form id="tenantLookupForm" style="display: flex; flex-direction: column; gap: 0.85rem;">
+              <div class="form-group">
+                <label for="lookupUnitNumber">House / Unit Number *</label>
+                <input type="text" id="lookupUnitNumber" class="form-input" placeholder="e.g. A1, Room 4, Bedsitter B" required autocomplete="off">
+                <span class="field-hint">Your assigned door number or house label.</span>
+              </div>
+
+              <div class="form-group">
+                <label for="lookupPhoneNumber">Registered Phone Number *</label>
+                <input type="tel" id="lookupPhoneNumber" class="form-input" placeholder="e.g. 0712 345 678 or last 4 digits" required autocomplete="off">
+                <span class="field-hint">Enter your phone number or last 4 digits to verify identity.</span>
+              </div>
+
+              <div id="lookupErrorMessage" style="color: #dc2626; font-size: 0.85rem; min-height: 1.2rem; font-weight: 600;"></div>
+
+              <button type="submit" class="btn btn-primary" id="btnLookupTenantAccount" style="padding: 0.75rem; font-weight: 700;">
+                🔍 View My Arrears &amp; Pay
+              </button>
+            </form>
+          </div>
+
+          <!-- Verified Account Banner (shown when unit is verified via link or lookup) -->
+          <div id="tenantVerifiedBanner" style="display: none; margin-bottom: 1rem;">
+            <div style="background: linear-gradient(135deg, #16382c, #2d8a5e); color: #fff; padding: 1rem 1.25rem; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <span style="background: rgba(255,255,255,0.2); padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                  Verified Tenant Account
+                </span>
+                <h3 style="margin: 0.35rem 0 0 0; color: #fff; font-size: 1.25rem;" id="verifiedUnitHeading">
+                  Unit -
+                </h3>
+                <div class="small-meta" style="color: #a8c8b8;" id="verifiedTenantSubheading">
+                  Tenant
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm" id="clientSwitchAccountBtn" style="background: rgba(255,255,255,0.18); color: #fff; border: 1px solid rgba(255,255,255,0.3); font-size: 0.75rem;">
+                Change Unit
+              </button>
+            </div>
+          </div>
+
+          <!-- Admin Unit Selector (visible strictly when Landlord is in Admin Mode) -->
+          <div id="adminUnitSelectGroup" class="form-group" style="display: none; margin-bottom: 1.25rem; background: var(--bg-surface-alt); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px dashed var(--border-main);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <label for="tenantPayUnitSelect" style="font-size: 0.8125rem; font-weight: 700; color: var(--brand-primary); margin: 0;">
+                🔑 Landlord Admin: Preview Any Unit
+              </label>
+            </div>
+            <select id="tenantPayUnitSelect" class="form-select" style="font-weight: 600; font-size: 0.9rem;">
+              <option value="">-- Choose a unit --</option>
             </select>
-            <span class="field-hint">Select your unit from the list to see what you owe.</span>
+            <span class="field-hint">Only visible in Landlord mode. Tenants do not see other units.</span>
           </div>
 
           <!-- Unit Statement / Bill Box -->
@@ -2604,6 +2653,8 @@
       let inactivityTimer = null;
       let isSessionLocked = false;
       let pinFailedAttempts = 0;
+      let isClientMode = false;
+      let verifiedClientUnitId = null;
       let pinLockoutUntil = 0;
       let lockoutInterval = null;
 
@@ -3805,26 +3856,159 @@
         attachBillTableEventListeners();
       }
 
-      // --- RENDER VIEW 5: TENANT PAY PORTAL ---
-      function renderTenantPay() {
+      // --- CLIENT PRIVACY & TENANT ACCOUNT HELPERS ---
+      function maskTenantName(name) {
+        if (!name) return 'Resident';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0];
+        return parts[0] + ' ' + parts[parts.length - 1][0] + '.';
+      }
+
+      function getActiveTenantPayUnitId() {
+        if (verifiedClientUnitId) return verifiedClientUnitId;
         const select = document.getElementById('tenantPayUnitSelect');
-        if (!select) return;
-        const currentSelectedVal = select.value;
+        return select ? select.value : '';
+      }
 
-        // Populate unit dropdown
-        let html = '<option value="">-- Choose your unit --</option>';
-        appState.units.forEach(unit => {
-          const tenantDesc = unit.isVacant ? '(Vacant)' : (unit.tenantName ? `(${unit.tenantName})` : '');
-          html += `<option value="${escapeHTML(unit.id)}">${escapeHTML(unit.name)} ${escapeHTML(tenantDesc)}</option>`;
+      function findMatchingUnit(unitQuery, phoneQuery) {
+        if (!unitQuery) return null;
+        const cleanUnit = unitQuery.trim().toLowerCase().replace(/^unit\s*/i, '').replace(/^house\s*/i, '').replace(/^room\s*/i, '');
+        const cleanPhone = (phoneQuery || '').trim().replace(/[^0-9]/g, '');
+
+        return appState.units.find(u => {
+          if (u.isVacant) return false;
+          const uName = (u.name || '').trim().toLowerCase().replace(/^unit\s*/i, '').replace(/^house\s*/i, '').replace(/^room\s*/i, '');
+          const unitMatch = (u.id === unitQuery.trim() || uName === cleanUnit);
+          if (!unitMatch) return false;
+
+          // If phone was provided, verify it
+          if (cleanPhone) {
+            if (!u.tenantPhone) return true;
+            const uPhone = (u.tenantPhone || '').replace(/[^0-9]/g, '');
+            if (cleanPhone.length >= 4 && uPhone.endsWith(cleanPhone)) return true;
+            if (uPhone.includes(cleanPhone) || cleanPhone.includes(uPhone)) return true;
+            return false;
+          }
+          return true;
         });
-        select.innerHTML = html;
+      }
 
-        // Restore selection if valid
-        if (currentSelectedVal && appState.units.some(u => u.id === currentSelectedVal)) {
-          select.value = currentSelectedVal;
+      function setClientMode(unitId) {
+        isClientMode = true;
+        verifiedClientUnitId = unitId;
+
+        const unit = appState.units.find(u => u.id === unitId);
+        const prop = appState.property || {};
+
+        // Update verified banner
+        const lookupCard = document.getElementById('tenantLookupCard');
+        if (lookupCard) lookupCard.style.display = 'none';
+        const verifiedBanner = document.getElementById('tenantVerifiedBanner');
+        if (verifiedBanner) verifiedBanner.style.display = 'block';
+        const adminGroup = document.getElementById('adminUnitSelectGroup');
+        if (adminGroup) adminGroup.style.display = 'none';
+
+        if (unit) {
+          const heading = document.getElementById('verifiedUnitHeading');
+          if (heading) heading.textContent = `Unit ${unit.name}`;
+          const sub = document.getElementById('verifiedTenantSubheading');
+          if (sub) sub.textContent = `Tenant: ${maskTenantName(unit.tenantName)} • ${prop.name || 'Rent Book'}`;
         }
 
-        // Update Paybill & Till numbers from settings
+        // Hide all admin tabs from the client: Dashboard, Units, Payments, Bills, Settings
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+          if (tab.dataset.tab !== 'tenant-pay') {
+            tab.style.display = 'none';
+          } else {
+            tab.style.display = 'inline-flex';
+            tab.classList.add('active');
+            tab.setAttribute('aria-selected', 'true');
+            tab.innerHTML = '📱 My Rent &amp; Arrears';
+          }
+        });
+
+        // Show tenant pay tab pane exclusively
+        document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+        const payPane = document.getElementById('tab-tenant-pay');
+        if (payPane) payPane.style.display = 'block';
+
+        // In header: hide month navigation and landlord admin buttons
+        const monthBar = document.querySelector('.month-bar');
+        if (monthBar) monthBar.style.display = 'none';
+        const lockBtn = document.getElementById('lockNowBtn');
+        if (lockBtn) lockBtn.style.display = 'none';
+        const todayBtn = document.getElementById('todayMonthBtn');
+        if (todayBtn) todayBtn.style.display = 'none';
+        const rulesBtn = document.getElementById('howItWorksBtn');
+        if (rulesBtn) rulesBtn.style.display = 'none';
+
+        // Show Landlord Login button in header
+        let adminLoginBtn = document.getElementById('headerAdminLoginBtn');
+        if (!adminLoginBtn) {
+          adminLoginBtn = document.createElement('button');
+          adminLoginBtn.id = 'headerAdminLoginBtn';
+          adminLoginBtn.className = 'btn header-btn';
+          adminLoginBtn.innerHTML = '🔑 Landlord Login';
+          adminLoginBtn.title = 'Switch to Landlord Admin Ledger';
+          adminLoginBtn.addEventListener('click', handleAdminLoginPrompt);
+          const headerActions = document.querySelector('.header-actions');
+          if (headerActions) headerActions.prepend(adminLoginBtn);
+        } else {
+          adminLoginBtn.style.display = 'inline-flex';
+        }
+
+        updateTenantPayDetails(unitId);
+      }
+
+      function exitClientMode() {
+        isClientMode = false;
+        verifiedClientUnitId = null;
+
+        // Restore all navigation tabs
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+          tab.style.display = 'inline-flex';
+        });
+
+        const payTab = document.querySelector('.nav-tab[data-tab="tenant-pay"]');
+        if (payTab) payTab.innerHTML = '📱 Pay Rent (Tenant Portal)';
+
+        // Restore header
+        const monthBar = document.querySelector('.month-bar');
+        if (monthBar) monthBar.style.display = 'flex';
+        const lockBtn = document.getElementById('lockNowBtn');
+        if (lockBtn) lockBtn.style.display = 'inline-flex';
+        const todayBtn = document.getElementById('todayMonthBtn');
+        if (todayBtn) todayBtn.style.display = 'inline-flex';
+        const rulesBtn = document.getElementById('howItWorksBtn');
+        if (rulesBtn) rulesBtn.style.display = 'inline-flex';
+
+        const adminLoginBtn = document.getElementById('headerAdminLoginBtn');
+        if (adminLoginBtn) adminLoginBtn.style.display = 'none';
+
+        // Switch to dashboard
+        const dashTab = document.querySelector('.nav-tab[data-tab="dashboard"]');
+        if (dashTab) dashTab.click();
+        renderAll();
+        showToast('Switched to Landlord Admin mode.');
+      }
+
+      async function handleAdminLoginPrompt() {
+        if (isPinSet()) {
+          const entered = prompt('Enter Landlord PIN to access admin dashboard:');
+          if (entered === null) return;
+          const ok = await verifyPin(entered.trim());
+          if (ok) {
+            exitClientMode();
+          } else {
+            showToast('Incorrect Landlord PIN.', 'error');
+          }
+        } else {
+          exitClientMode();
+        }
+      }
+
+      // --- RENDER VIEW 5: TENANT PAY PORTAL ---
+      function renderTenantPay() {
         const prop = appState.property || {};
         const paybillNum = prop.paybillNumber || '522522';
         const tillNum = prop.tillNumber || '123456';
@@ -3839,8 +4023,40 @@
         const instructionTillEl = document.getElementById('instructionTill');
         if (instructionTillEl) instructionTillEl.textContent = tillNum;
 
-        // Render details for currently selected unit
-        updateTenantPayDetails(select.value);
+        // Admin mode dropdown population
+        const select = document.getElementById('tenantPayUnitSelect');
+        const adminGroup = document.getElementById('adminUnitSelectGroup');
+        const lookupCard = document.getElementById('tenantLookupCard');
+        const verifiedBanner = document.getElementById('tenantVerifiedBanner');
+
+        if (select) {
+          let html = '<option value="">-- Choose a unit to preview --</option>';
+          appState.units.forEach(unit => {
+            const tenantDesc = unit.isVacant ? '(Vacant)' : (unit.tenantName ? `(${unit.tenantName})` : '');
+            html += `<option value="${escapeHTML(unit.id)}">${escapeHTML(unit.name)} ${escapeHTML(tenantDesc)}</option>`;
+          });
+          select.innerHTML = html;
+        }
+
+        if (isClientMode && verifiedClientUnitId) {
+          if (lookupCard) lookupCard.style.display = 'none';
+          if (verifiedBanner) verifiedBanner.style.display = 'block';
+          if (adminGroup) adminGroup.style.display = 'none';
+          updateTenantPayDetails(verifiedClientUnitId);
+        } else if (!isClientMode) {
+          // Landlord Admin viewing portal
+          if (adminGroup) adminGroup.style.display = 'block';
+          if (lookupCard) lookupCard.style.display = 'none';
+          if (verifiedBanner) verifiedBanner.style.display = 'none';
+          const currentVal = select ? select.value : '';
+          updateTenantPayDetails(currentVal);
+        } else {
+          // Client without verified unit
+          if (lookupCard) lookupCard.style.display = 'block';
+          if (verifiedBanner) verifiedBanner.style.display = 'none';
+          if (adminGroup) adminGroup.style.display = 'none';
+          updateTenantPayDetails(null);
+        }
       }
 
       function updateTenantPayDetails(unitId) {
@@ -3871,10 +4087,10 @@
         summaryBox.style.display = 'block';
         emptyPrompt.style.display = 'none';
 
-        document.getElementById('tenantSummaryUnitName').textContent = unit.name;
+        document.getElementById('tenantSummaryUnitName').textContent = 'Unit ' + unit.name;
         document.getElementById('tenantSummaryTenantName').textContent = unit.isVacant 
           ? 'Vacant Unit' 
-          : `${unit.tenantName || 'Tenant'} ${unit.tenantPhone ? '• ' + unit.tenantPhone : ''}`;
+          : `Tenant: ${maskTenantName(unit.tenantName)}`;
 
         // Badge
         const badgeEl = document.getElementById('tenantSummaryBadge');
@@ -5367,7 +5583,7 @@
         const tenantAgrBtn = document.getElementById('tenantViewAgreementBtn');
         if (tenantAgrBtn) {
           tenantAgrBtn.addEventListener('click', () => {
-            const unitId = document.getElementById('tenantPayUnitSelect').value;
+            const unitId = getActiveTenantPayUnitId();
             handleOpenAgreement(unitId);
           });
         }
@@ -5703,7 +5919,53 @@
           });
         }
 
-        // Tenant Pay Portal: Unit selection
+        // Tenant Pay Portal: Private Account Lookup Form
+        const lookupForm = document.getElementById('tenantLookupForm');
+        if (lookupForm) {
+          lookupForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const unitInput = document.getElementById('lookupUnitNumber').value.trim();
+            const phoneInput = document.getElementById('lookupPhoneNumber').value.trim();
+            const errEl = document.getElementById('lookupErrorMessage');
+            errEl.textContent = '';
+
+            if (!unitInput) {
+              errEl.textContent = 'Please enter your house/unit number.';
+              return;
+            }
+
+            const matched = findMatchingUnit(unitInput, phoneInput);
+            if (!matched) {
+              errEl.textContent = 'No matching tenant found for that unit and phone. Please check your details or contact your caretaker.';
+              return;
+            }
+
+            setClientMode(matched.id);
+            showToast(`Welcome! Viewing account for Unit ${matched.name}.`);
+          });
+        }
+
+        // Tenant Pay Portal: Switch Account button
+        const switchAccountBtn = document.getElementById('clientSwitchAccountBtn');
+        if (switchAccountBtn) {
+          switchAccountBtn.addEventListener('click', () => {
+            verifiedClientUnitId = null;
+            const lookupCard = document.getElementById('tenantLookupCard');
+            const verifiedBanner = document.getElementById('tenantVerifiedBanner');
+            const summaryBox = document.getElementById('tenantBillSummaryBox');
+            const emptyPrompt = document.getElementById('tenantNoUnitSelectedPrompt');
+            if (lookupCard) lookupCard.style.display = 'block';
+            if (verifiedBanner) verifiedBanner.style.display = 'none';
+            if (summaryBox) summaryBox.style.display = 'none';
+            if (emptyPrompt) emptyPrompt.style.display = 'block';
+            document.getElementById('lookupUnitNumber').value = '';
+            document.getElementById('lookupPhoneNumber').value = '';
+            document.getElementById('lookupErrorMessage').textContent = '';
+            updateTenantPayDetails(null);
+          });
+        }
+
+        // Tenant Pay Portal: Admin Unit selection
         const tenantSelectEl = document.getElementById('tenantPayUnitSelect');
         if (tenantSelectEl) {
           tenantSelectEl.addEventListener('change', (e) => {
@@ -5811,9 +6073,9 @@
             e.preventDefault();
             if (isRateLimited('tenantPay', 3000)) return;
 
-            const unitId = document.getElementById('tenantPayUnitSelect').value;
+            const unitId = getActiveTenantPayUnitId();
             if (!unitId) {
-              showToast('Please select your unit above first.', 'warning');
+              showToast('Please look up and verify your unit first.', 'warning');
               return;
             }
             const unit = appState.units.find(u => u.id === unitId);
@@ -5875,7 +6137,7 @@
         const shareLinkBtn = document.getElementById('tenantShareLinkBtn');
         if (shareLinkBtn) {
           shareLinkBtn.addEventListener('click', () => {
-            const selectedUnitId = document.getElementById('tenantPayUnitSelect').value;
+            const selectedUnitId = getActiveTenantPayUnitId();
             let link = window.location.origin + window.location.pathname;
             if (selectedUnitId) {
               link += `?unit=${encodeURIComponent(selectedUnitId)}`;
@@ -6098,18 +6360,14 @@
           if (unitParam) {
             // Sanitize the parameter (prevent injection via URL)
             const cleanParam = sanitizeString(unitParam, 60);
-            // Only accept if it matches a real unit ID
-            const matchedUnit = appState.units.find(u => u.id === cleanParam);
+            // Match by unit ID or unit name (e.g. ?pay=A1 or ?unit=unit_xxx)
+            const matchedUnit = appState.units.find(u => 
+              u.id === cleanParam || 
+              (u.name && u.name.trim().toLowerCase() === cleanParam.trim().toLowerCase()) ||
+              (u.name && ('unit ' + u.name.trim().toLowerCase()) === cleanParam.trim().toLowerCase())
+            );
             if (matchedUnit) {
-              const tenantPayTab = document.querySelector('.nav-tab[data-tab="tenant-pay"]');
-              if (tenantPayTab) {
-                tenantPayTab.click();
-              }
-              const unitSelect = document.getElementById('tenantPayUnitSelect');
-              if (unitSelect) {
-                unitSelect.value = cleanParam;
-                updateTenantPayDetails(cleanParam);
-              }
+              setClientMode(matchedUnit.id);
             }
           }
         } catch (e) {
