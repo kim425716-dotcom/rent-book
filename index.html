@@ -1352,6 +1352,64 @@
         padding-bottom: 5rem;
       }
     }
+
+    /* Inspection Checklist Styles */
+    .insp-room-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-main);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .insp-room-header {
+      background: var(--bg-surface-alt);
+      padding: 0.5rem 0.85rem;
+      border-bottom: 1px solid var(--border-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    .insp-item-row {
+      display: grid;
+      grid-template-columns: 2fr 130px 3fr 36px;
+      gap: 0.5rem;
+      padding: 0.45rem 0.85rem;
+      border-bottom: 1px solid var(--border-light);
+      align-items: center;
+      font-size: 0.82rem;
+    }
+    .insp-item-row:last-child {
+      border-bottom: none;
+    }
+    @media (max-width: 720px) {
+      .insp-item-row {
+        grid-template-columns: 1fr 1fr;
+      }
+      .insp-item-row .insp-item-notes {
+        grid-column: 1 / -1;
+      }
+    }
+    .badge-status-good {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .badge-status-fair {
+      background: #fffbeb;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+    .badge-status-damaged {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+    .badge-status-na {
+      background: #f3f4f6;
+      color: #4b5563;
+      border: 1px solid #e5e7eb;
+    }
   </style>
 </head>
 <body>
@@ -1616,6 +1674,9 @@
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <button class="btn btn-secondary" id="openAgreementModalBtn">
             📜 Tenancy Agreement
+          </button>
+          <button class="btn btn-secondary" id="openInspectionModalBtn" title="Unit Move-In / Move-Out Condition Inspection Checklist">
+            📋 Inspection Checklist
           </button>
           <button class="btn btn-secondary" id="openVacateModalBtn" title="Tenant Move-Out Clearance &amp; Deposit Refund Statement">
             🚪 Move-Out / Vacate
@@ -2549,6 +2610,10 @@
               🚪 Move-Out Clearance &amp; Deposit Statement
             </button>
 
+            <button class="btn btn-secondary" id="settingsInspectionBtn" title="Unit Move-In / Move-Out Condition Inspection Checklist">
+              📋 Condition Inspection &amp; Handover Report
+            </button>
+
             <button class="btn btn-secondary" id="settingsRentReviewBtn" title="Generate Statutory 90-Day Rent Review Notice">
               📈 90-Day Rent Review Notice Generator
             </button>
@@ -3456,6 +3521,163 @@
   </div>
 
   <!-- ========================================================================
+       MODAL: MOVE-IN & MOVE-OUT CONDITION INSPECTION CHECKLIST
+       ======================================================================== -->
+  <div class="modal-backdrop" id="inspectionModal" role="dialog" aria-modal="true" aria-labelledby="inspectionModalTitle">
+    <div class="modal-dialog" style="max-width: 960px; width: 96%;">
+      <div class="modal-header">
+        <div>
+          <h3 id="inspectionModalTitle">📋 Unit Move-In / Move-Out Condition Inspection Checklist</h3>
+          <p class="small-meta">Room-by-room inventory, fixture condition ratings, utility meter handover &amp; dual sign-off sheet</p>
+        </div>
+        <button class="modal-close-btn" data-close-modal="inspectionModal" aria-label="Close modal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="max-height: 84vh; overflow-y: auto;">
+        <!-- Top Customizer / Interactive Inspection Form (hidden in print) -->
+        <div class="no-print" style="background: var(--bg-surface-alt); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 1.15rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem;">
+            <strong style="font-size: 0.95rem;">⚙️ Handover &amp; Fixture Inspection Details</strong>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-sm btn-primary" id="saveInspectionBtn" title="Save this inspection record to the unit history">
+                💾 Save to Unit History
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" id="whatsappInspectionBtn" title="Send inspection summary to tenant via WhatsApp">
+                💬 WhatsApp Summary
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" id="copyInspectionBtn" title="Copy inspection report text to clipboard">
+                📋 Copy Text
+              </button>
+              <button type="button" class="btn btn-sm btn-secondary" id="resetInspectionBtn" title="Reset checklist to standard template">
+                🔄 Reset Checklist
+              </button>
+            </div>
+          </div>
+
+          <!-- Section 1: Unit, Type & Parties -->
+          <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
+            1. Unit, Inspection Type &amp; Parties
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.65rem; font-size: 0.85rem; margin-bottom: 1rem;">
+            <div class="form-group">
+              <label for="inspSelectUnit">Select Unit</label>
+              <select id="inspSelectUnit" class="form-select"></select>
+            </div>
+            <div class="form-group">
+              <label for="inspType">Inspection Type</label>
+              <select id="inspType" class="form-select">
+                <option value="move_in">Move-In Handover Baseline</option>
+                <option value="move_out">Move-Out Clearance Inspection</option>
+                <option value="routine">Routine / Periodic Audit</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="inspDate">Inspection Date</label>
+              <input type="date" id="inspDate" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="inspInspector">Inspector / Caretaker Name</label>
+              <input type="text" id="inspInspector" class="form-input" placeholder="e.g. Brian Mwangi (Landlord)">
+            </div>
+            <div class="form-group">
+              <label for="inspInspectorPhone">Inspector Phone</label>
+              <input type="tel" id="inspInspectorPhone" class="form-input" placeholder="e.g. 0712 345 678">
+            </div>
+            <div class="form-group">
+              <label for="inspTenantName">Tenant Full Name</label>
+              <input type="text" id="inspTenantName" class="form-input" placeholder="e.g. Alice Wambui">
+            </div>
+            <div class="form-group">
+              <label for="inspTenantId">Tenant National ID / Passport</label>
+              <input type="text" id="inspTenantId" class="form-input" placeholder="e.g. 28475910">
+            </div>
+            <div class="form-group">
+              <label for="inspTenantPhone">Tenant Phone Number</label>
+              <input type="tel" id="inspTenantPhone" class="form-input" placeholder="e.g. 0722 000 111">
+            </div>
+          </div>
+
+          <!-- Section 2: Key Handover & Utility Meters -->
+          <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
+            2. Keys Inventory &amp; Initial/Final Meter Readings
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.65rem; font-size: 0.85rem; margin-bottom: 1rem;">
+            <div class="form-group">
+              <label for="inspWaterMeter">Water Sub-Meter Reading (m³)</label>
+              <input type="text" id="inspWaterMeter" class="form-input" placeholder="e.g. 142.50 m³">
+            </div>
+            <div class="form-group">
+              <label for="inspKplcMeter">KPLC Token Meter &amp; Units Balance</label>
+              <input type="text" id="inspKplcMeter" class="form-input" placeholder="e.g. # 14285910392 (42 kWh)">
+            </div>
+            <div class="form-group">
+              <label for="inspKeysMain">Main Door Keys Handed</label>
+              <input type="number" id="inspKeysMain" class="form-input" min="0" value="2">
+            </div>
+            <div class="form-group">
+              <label for="inspKeysGate">Security Gate / Padlock Keys</label>
+              <input type="number" id="inspKeysGate" class="form-input" min="0" value="2">
+            </div>
+            <div class="form-group">
+              <label for="inspKeysInterior">Interior / Room Keys</label>
+              <input type="number" id="inspKeysInterior" class="form-input" min="0" value="1">
+            </div>
+          </div>
+
+          <!-- Section 3: Room-by-Room Dynamic Condition Checklist -->
+          <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <span>3. Room-by-Room Fixtures &amp; Condition Inventory</span>
+            <span style="font-size: 0.75rem; font-weight: normal; color: var(--text-muted);">
+              Rating Legend: <strong style="color: #10b981;">Good ✓</strong> &bull; <strong style="color: #f59e0b;">Fair —</strong> &bull; <strong style="color: #ef4444;">Damaged ⚠️</strong> &bull; <span>N/A</span>
+            </span>
+          </div>
+
+          <!-- Dynamic Container for Room Checklist Cards -->
+          <div id="inspRoomsContainer" style="display: flex; flex-direction: column; gap: 0.85rem; margin-bottom: 1rem;">
+            <!-- Populated dynamically by renderInspectionForm() -->
+          </div>
+
+          <!-- Section 4: General Remarks & Agreed Repairs -->
+          <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem;">
+            4. General Remarks &amp; Special Handover Agreements
+          </div>
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <textarea id="inspOverallNotes" class="form-input" rows="2" placeholder="e.g. Premises inspected jointly in clean and tenantable condition. All keys tested. Landlord undertakes to install curtain brackets within 7 days."></textarea>
+          </div>
+
+          <!-- Section 5: Past Inspection History for this Unit -->
+          <div style="border-top: 1px dashed var(--border-main); padding-top: 0.85rem; margin-top: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <strong style="font-size: 0.85rem;">📂 Past Inspection Records for this Unit</strong>
+              <span id="inspHistoryCount" class="badge badge-neutral" style="font-size: 0.75rem;">0 records</span>
+            </div>
+            <div id="inspHistoryList" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 180px; overflow-y: auto;">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Printable Document Area -->
+        <div id="inspectionPreviewContainer" class="printable-area">
+          <!-- Populated dynamically by updateInspectionPreview() -->
+        </div>
+      </div>
+
+      <div class="modal-footer no-print">
+        <button type="button" class="btn btn-secondary" data-close-modal="inspectionModal">Close</button>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" class="btn btn-primary" id="saveInspectionFooterBtn">
+            💾 Save Inspection to History
+          </button>
+          <button type="button" class="btn btn-primary" id="printInspectionReportBtn">
+            🖨️ Print / Save Inspection Report (PDF)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
        MODAL: ASSESS & APPLY LATE RENT PENALTIES
        ======================================================================== -->
   <div class="modal-backdrop" id="lateFeeModal" role="dialog" aria-modal="true" aria-labelledby="lateFeeModalTitle">
@@ -3924,6 +4146,7 @@
         payments: [],
         bills: [],
         expenses: [],
+        inspections: [],
         security: {
           maskPhoneNumbers: false
         },
@@ -3965,6 +4188,7 @@
             if (!Array.isArray(appState.payments)) appState.payments = [];
             if (!Array.isArray(appState.bills)) appState.bills = [];
             if (!Array.isArray(appState.expenses)) appState.expenses = [];
+            if (!Array.isArray(appState.inspections)) appState.inspections = [];
             if (!appState.security) appState.security = { maskPhoneNumbers: false };
             if (!appState.lateFeePolicy) {
               appState.lateFeePolicy = {
@@ -7078,6 +7302,327 @@
         );
       }
 
+      // =====================================================
+      // INSPECTION CHECKLIST ENGINE
+      // =====================================================
+
+      function getInspectionTemplate() {
+        return [
+          {
+            room: 'Entrance & Doors', icon: '🚪',
+            items: ['Main Door Lock & Handle','Deadbolt / Security Grill','Door Frame & Hinges','Keys Handed Over (Main)']
+          },
+          {
+            room: 'Living Room', icon: '🛋️',
+            items: ['Wall Paint Condition','Ceiling & Cornices','Windows & Latches','Electrical Sockets & Switches','Light Fixtures','Floor Tiles / Flooring']
+          },
+          {
+            room: 'Kitchen', icon: '🍳',
+            items: ['Sink & Drainage','Taps & Water Pressure','Cabinets & Shelves','Countertops / Working Surface','Cooking Area Tiles','Wall Paint / Finish']
+          },
+          {
+            room: 'Bedroom(s)', icon: '🛏️',
+            items: ['Door Lock & Handle','Wardrobe / Built-in Storage','Wall Paint Condition','Windows & Latches','Electrical Sockets','Floor Tiles / Flooring']
+          },
+          {
+            room: 'Bathroom & Toilet', icon: '🚿',
+            items: ['Water Closet (Toilet Flush & Seat)','Shower Head & Faucet','Wash Basin & Drainage','Wall & Floor Tiles / Grouting','Mirror & Accessories','Bathroom Door & Lock']
+          },
+          {
+            room: 'Balcony / External Areas', icon: '🏗️',
+            items: ['Balcony Rails & Safety','External Walls & Paint','Drainage / Gutters']
+          }
+        ];
+      }
+
+      let inspectionItems = {};
+
+      function handleOpenInspection(unitId) {
+        const select = document.getElementById('inspSelectUnit');
+        let opts = '';
+        appState.units.forEach(function(u) {
+          opts += '<option value="' + u.id + '">' + escapeHTML(u.name) + (u.isVacant ? ' (Vacant)' : ' — ' + escapeHTML(u.tenantName || 'Occupied')) + '</option>';
+        });
+        select.innerHTML = opts;
+        if (unitId) select.value = unitId;
+
+        const todayStr = new Date().toISOString().substring(0, 10);
+        const dateInput = document.getElementById('inspDate');
+        if (dateInput && !dateInput.value) dateInput.value = todayStr;
+
+        const inspInspectorInput = document.getElementById('inspInspector');
+        if (inspInspectorInput && !inspInspectorInput.value) {
+          inspInspectorInput.value = (appState.property && appState.property.landlordName) || '';
+        }
+        const inspInspectorPhoneInput = document.getElementById('inspInspectorPhone');
+        if (inspInspectorPhoneInput && !inspInspectorPhoneInput.value) {
+          inspInspectorPhoneInput.value = (appState.property && appState.property.phone) || '';
+        }
+
+        loadInspectionTenantDetails(select.value);
+        inspectionItems = {};
+        renderInspectionForm();
+        renderInspectionHistory(select.value);
+        updateInspectionPreview();
+        openModal('inspectionModal');
+      }
+
+      function loadInspectionTenantDetails(unitId) {
+        const unit = appState.units.find(function(u) { return u.id === unitId; });
+        if (!unit) return;
+        const tn = document.getElementById('inspTenantName');
+        const tp = document.getElementById('inspTenantPhone');
+        const ti = document.getElementById('inspTenantId');
+        if (tn) tn.value = unit.tenantName || '';
+        if (tp) tp.value = unit.tenantPhone || '';
+        if (ti) ti.value = unit.tenantIdNumber || '';
+      }
+
+      function renderInspectionForm() {
+        const container = document.getElementById('inspRoomsContainer');
+        if (!container) return;
+        const template = getInspectionTemplate();
+        let html = '';
+        template.forEach(function(roomDef, roomIdx) {
+          html += '<div class="insp-room-card"><div class="insp-room-header"><span>' + escapeHTML(roomDef.icon) + ' ' + escapeHTML(roomDef.room) + '</span><span class="badge badge-neutral" id="inspRoomBadge_' + roomIdx + '" style="font-size:0.75rem;">Not Rated</span></div>';
+          roomDef.items.forEach(function(item, itemIdx) {
+            const key = roomIdx + '-' + itemIdx;
+            const cur = inspectionItems[key] || { condition: 'good', notes: '' };
+            html += '<div class="insp-item-row" id="inspRow_' + key + '">';
+            html += '<span>' + escapeHTML(item) + '</span>';
+            html += '<select class="form-select" style="font-size:0.8rem;padding:0.25rem 0.4rem;" onchange="setInspItemCondition(\'' + key + '\',this.value)" id="inspSel_' + key + '">';
+            html += '<option value="good"' + (cur.condition === 'good' ? ' selected' : '') + '>✓ Good</option>';
+            html += '<option value="fair"' + (cur.condition === 'fair' ? ' selected' : '') + '>— Fair</option>';
+            html += '<option value="damaged"' + (cur.condition === 'damaged' ? ' selected' : '') + '>⚠️ Damaged</option>';
+            html += '<option value="na"' + (cur.condition === 'na' ? ' selected' : '') + '>N/A</option>';
+            html += '</select>';
+            html += '<input type="text" class="form-input insp-item-notes" style="font-size:0.8rem;padding:0.25rem 0.4rem;" placeholder="Condition notes (optional)" value="' + escapeHTML(cur.notes || '') + '" oninput="setInspItemNotes(\'' + key + '\',this.value)" id="inspNotes_' + key + '">';
+            html += '<span id="inspBadge_' + key + '">' + getConditionBadge(cur.condition) + '</span>';
+            html += '</div>';
+          });
+          html += '</div>';
+        });
+        container.innerHTML = html;
+        updateAllRoomBadges();
+      }
+
+      function getConditionBadge(cond) {
+        if (cond === 'good') return '<span class="badge badge-status-good">✓</span>';
+        if (cond === 'fair') return '<span class="badge badge-status-fair">—</span>';
+        if (cond === 'damaged') return '<span class="badge badge-status-damaged">⚠️</span>';
+        return '<span class="badge badge-status-na">N/A</span>';
+      }
+
+      function setInspItemCondition(key, value) {
+        if (!inspectionItems[key]) inspectionItems[key] = { condition: 'good', notes: '' };
+        inspectionItems[key].condition = value;
+        const badge = document.getElementById('inspBadge_' + key);
+        if (badge) badge.innerHTML = getConditionBadge(value);
+        const row = document.getElementById('inspRow_' + key);
+        if (row) row.style.background = value === 'damaged' ? 'rgba(239,68,68,0.04)' : value === 'fair' ? 'rgba(245,158,11,0.04)' : '';
+        updateAllRoomBadges();
+        updateInspectionPreview();
+      }
+
+      function setInspItemNotes(key, value) {
+        if (!inspectionItems[key]) inspectionItems[key] = { condition: 'good', notes: '' };
+        inspectionItems[key].notes = value;
+        updateInspectionPreview();
+      }
+
+      function updateAllRoomBadges() {
+        const template = getInspectionTemplate();
+        template.forEach(function(roomDef, roomIdx) {
+          let damaged = 0, fair = 0;
+          roomDef.items.forEach(function(item, itemIdx) {
+            const cond = (inspectionItems[roomIdx + '-' + itemIdx] || {}).condition || 'good';
+            if (cond === 'damaged') damaged++;
+            else if (cond === 'fair') fair++;
+          });
+          const badge = document.getElementById('inspRoomBadge_' + roomIdx);
+          if (!badge) return;
+          if (damaged > 0) {
+            badge.textContent = '⚠️ ' + damaged + ' Damaged';
+            badge.className = 'badge badge-status-damaged';
+          } else if (fair > 0) {
+            badge.textContent = '— ' + fair + ' Fair';
+            badge.className = 'badge badge-status-fair';
+          } else {
+            badge.textContent = '✓ All Good';
+            badge.className = 'badge badge-status-good';
+          }
+        });
+      }
+
+      function collectInspectionData() {
+        const unitId = document.getElementById('inspSelectUnit').value;
+        const unit = appState.units.find(function(u) { return u.id === unitId; });
+        const type = document.getElementById('inspType').value;
+        const date = document.getElementById('inspDate').value;
+        const inspector = document.getElementById('inspInspector').value.trim();
+        const inspectorPhone = document.getElementById('inspInspectorPhone').value.trim();
+        const tenantName = document.getElementById('inspTenantName').value.trim();
+        const tenantId = document.getElementById('inspTenantId').value.trim();
+        const tenantPhone = document.getElementById('inspTenantPhone').value.trim();
+        const waterMeter = document.getElementById('inspWaterMeter').value.trim();
+        const kplcMeter = document.getElementById('inspKplcMeter').value.trim();
+        const keysMain = parseInt(document.getElementById('inspKeysMain').value) || 0;
+        const keysGate = parseInt(document.getElementById('inspKeysGate').value) || 0;
+        const keysInterior = parseInt(document.getElementById('inspKeysInterior').value) || 0;
+        const overallNotes = document.getElementById('inspOverallNotes').value.trim();
+
+        const template = getInspectionTemplate();
+        const rooms = template.map(function(roomDef, roomIdx) {
+          return {
+            room: roomDef.room,
+            icon: roomDef.icon,
+            items: roomDef.items.map(function(item, itemIdx) {
+              const key = roomIdx + '-' + itemIdx;
+              const cur = inspectionItems[key] || { condition: 'good', notes: '' };
+              return { name: item, condition: cur.condition, notes: cur.notes || '' };
+            })
+          };
+        });
+
+        return { unitId: unitId, unitName: unit ? unit.name : '', type: type, date: date, inspector: inspector, inspectorPhone: inspectorPhone, tenantName: tenantName, tenantId: tenantId, tenantPhone: tenantPhone, waterMeter: waterMeter, kplcMeter: kplcMeter, keysMain: keysMain, keysGate: keysGate, keysInterior: keysInterior, overallNotes: overallNotes, rooms: rooms };
+      }
+
+      function getInspectionTypeLabel(type) {
+        if (type === 'move_in') return 'MOVE-IN HANDOVER BASELINE';
+        if (type === 'move_out') return 'MOVE-OUT CLEARANCE INSPECTION';
+        if (type === 'routine') return 'ROUTINE / PERIODIC AUDIT';
+        return type.toUpperCase();
+      }
+
+      function updateInspectionPreview() {
+        const container = document.getElementById('inspectionPreviewContainer');
+        if (!container) return;
+        const d = collectInspectionData();
+        const prop = appState.property || {};
+        const dateLabel = d.date ? formatDateKE(d.date) : '___/___/______';
+        const refCode = 'INSP-' + (d.date || new Date().toISOString().substring(0,10)).replace(/-/g,'') + '-' + (d.unitName || 'UNIT').toUpperCase().replace(/\s+/g,'');
+
+        const roomSections = d.rooms.map(function(r) {
+          const rows = r.items.map(function(item) {
+            const condLabel = {good:'✓ Good',fair:'— Fair',damaged:'⚠️ Damaged',na:'N/A'}[item.condition] || item.condition;
+            const condStyle = item.condition === 'good' ? 'color:#065f46;font-weight:700;' : item.condition === 'fair' ? 'color:#92400e;font-weight:700;' : item.condition === 'damaged' ? 'color:#991b1b;font-weight:700;' : 'color:#6b7280;';
+            return '<tr><td style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;">' + escapeHTML(item.name) + '</td><td style="padding:4px 8px;border:1px solid #e5e7eb;text-align:center;font-size:0.82rem;' + condStyle + '">' + condLabel + '</td><td style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;color:#6b7280;">' + escapeHTML(item.notes || '—') + '</td></tr>';
+          }).join('');
+          return '<div style="margin-bottom:0.65rem;break-inside:avoid;"><div style="font-weight:700;font-size:0.85rem;background:#f3f4f6;padding:4px 8px;border:1px solid #e5e7eb;border-bottom:none;">' + escapeHTML(r.icon) + ' ' + escapeHTML(r.room) + '</div><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f9fafb;"><th style="padding:4px 8px;border:1px solid #e5e7eb;text-align:left;font-size:0.78rem;color:#374151;">Fixture / Item</th><th style="padding:4px 8px;border:1px solid #e5e7eb;text-align:center;font-size:0.78rem;color:#374151;width:110px;">Condition</th><th style="padding:4px 8px;border:1px solid #e5e7eb;text-align:left;font-size:0.78rem;color:#374151;">Notes / Defects</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+        }).join('');
+
+        const vacationType = d.type === 'move_in' ? 'occupation' : d.type === 'move_out' ? 'vacation' : 'routine inspection';
+
+        container.innerHTML = '<div style="font-family:\'Times New Roman\',serif;color:#111;font-size:0.88rem;padding:1.5rem 1.75rem;max-width:850px;margin:0 auto;">'
+          + '<div style="text-align:center;margin-bottom:1rem;border-bottom:3px double #111;padding-bottom:0.75rem;">'
+          + '<div style="font-size:2.2rem;margin-bottom:0.2rem;">🇰🇪</div>'
+          + '<div style="font-size:0.8rem;letter-spacing:0.1em;color:#555;margin-bottom:0.2rem;">REPUBLIC OF KENYA — LANDLORD &amp; TENANT ACT, CAP. 301</div>'
+          + '<h2 style="font-size:1.1rem;font-weight:900;letter-spacing:0.05em;text-transform:uppercase;margin:0.3rem 0;">Residential Property Schedule of Condition</h2>'
+          + '<h3 style="font-size:0.95rem;font-weight:700;margin:0.2rem 0;">&amp; Handover Inspection Report</h3>'
+          + '<div style="font-size:0.8rem;color:#555;margin-top:0.3rem;">' + getInspectionTypeLabel(d.type) + '</div>'
+          + '</div>'
+          + '<table style="width:100%;border-collapse:collapse;margin-bottom:1rem;">'
+          + '<tr><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;font-weight:700;background:#f9fafb;width:30%;">Reference No.</td><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;font-family:monospace;">' + escapeHTML(refCode) + '</td><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;font-weight:700;background:#f9fafb;width:30%;">Inspection Date</td><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;">' + escapeHTML(dateLabel) + '</td></tr>'
+          + '<tr><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;font-weight:700;background:#f9fafb;">Property</td><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;">' + escapeHTML(prop.name || 'Rental Premises') + '</td><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;font-weight:700;background:#f9fafb;">Unit / House</td><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;font-weight:700;">' + escapeHTML(d.unitName || '_______________') + '</td></tr>'
+          + '<tr><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;font-weight:700;background:#f9fafb;">Landlord / Inspector</td><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;">' + escapeHTML(d.inspector || prop.landlordName || '_______________') + '<br><span style="color:#6b7280;">' + escapeHTML(d.inspectorPhone || prop.phone || '') + '</span></td><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;font-weight:700;background:#f9fafb;">Tenant</td><td style="padding:4px 8px;border:1px solid #d1d5db;font-size:0.8rem;">' + escapeHTML(d.tenantName || '_______________') + (d.tenantId ? '<br><span style="color:#6b7280;">ID: ' + escapeHTML(d.tenantId) + '</span>' : '') + '<br><span style="color:#6b7280;">' + escapeHTML(d.tenantPhone || '') + '</span></td></tr>'
+          + '</table>'
+          + '<div style="margin-bottom:0.85rem;break-inside:avoid;"><div style="font-weight:700;font-size:0.85rem;background:#f3f4f6;padding:4px 8px;border:1px solid #e5e7eb;border-bottom:none;">🔑 Keys Inventory &amp; Utility Meter Readings</div><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;font-weight:700;background:#f9fafb;width:25%;">Main Door Keys</td><td style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;">' + d.keysMain + ' key(s)</td><td style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;font-weight:700;background:#f9fafb;width:25%;">Gate/Padlock Keys</td><td style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;">' + d.keysGate + ' key(s)</td><td style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;font-weight:700;background:#f9fafb;width:20%;">Interior Keys</td><td style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;">' + d.keysInterior + ' key(s)</td></tr><tr><td style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;font-weight:700;background:#f9fafb;">Water Sub-Meter</td><td colspan="2" style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;">' + escapeHTML(d.waterMeter || '_______________') + '</td><td style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;font-weight:700;background:#f9fafb;">KPLC Token Meter</td><td colspan="2" style="padding:4px 8px;border:1px solid #e5e7eb;font-size:0.82rem;">' + escapeHTML(d.kplcMeter || '_______________') + '</td></tr></table></div>'
+          + '<div style="font-weight:700;font-size:0.85rem;padding:4px 0;margin-bottom:0.4rem;">Room-by-Room Condition Schedule</div>'
+          + roomSections
+          + '<div style="margin-top:0.85rem;break-inside:avoid;"><div style="font-weight:700;font-size:0.85rem;background:#f3f4f6;padding:4px 8px;border:1px solid #e5e7eb;border-bottom:none;">General Remarks &amp; Special Agreements</div><div style="padding:8px;border:1px solid #e5e7eb;min-height:48px;font-size:0.82rem;">' + escapeHTML(d.overallNotes || 'Premises inspected jointly and found to be in the condition described above.') + '</div></div>'
+          + '<div style="margin-top:0.85rem;border:1px solid #374151;border-radius:4px;padding:0.65rem;background:#f9fafb;break-inside:avoid;"><strong style="font-size:0.82rem;">Statutory Declaration</strong><p style="font-size:0.8rem;color:#374151;margin:0.3rem 0 0;">We, the undersigned Landlord/Inspector and Tenant/Occupant, jointly acknowledge and confirm that the foregoing Schedule of Condition accurately reflects the physical state of the above-captioned residential premises as at the date of this ' + vacationType + ' handover inspection, and shall be admissible pursuant to the <em>Distress for Rent Act, Cap. 293</em> and the <em>Landlord and Tenant Act, Cap. 301</em>.</p></div>'
+          + '<div style="margin-top:1.25rem;display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;break-inside:avoid;">'
+          + '<div style="border-top:2px solid #111;padding-top:0.4rem;"><div style="font-size:0.82rem;font-weight:700;margin-bottom:1.5rem;">LANDLORD / INSPECTOR SIGNATURE</div><div style="font-size:0.8rem;color:#374151;">Name: ' + escapeHTML(d.inspector || prop.landlordName || '__________________________') + '<br>Phone: ' + escapeHTML(d.inspectorPhone || prop.phone || '______________________') + '<br>Date: ' + escapeHTML(dateLabel) + '<br><br>Signature: __________________________</div></div>'
+          + '<div style="border-top:2px solid #111;padding-top:0.4rem;"><div style="font-size:0.82rem;font-weight:700;margin-bottom:1.5rem;">TENANT / OCCUPANT SIGNATURE</div><div style="font-size:0.8rem;color:#374151;">Name: ' + escapeHTML(d.tenantName || '__________________________') + '<br>Phone: ' + escapeHTML(d.tenantPhone || '______________________') + '<br>ID/Passport: ' + escapeHTML(d.tenantId || '____________________') + '<br><br>Signature: __________________________</div></div>'
+          + '</div>'
+          + '<div style="margin-top:1rem;border-top:1px solid #e5e7eb;padding-top:0.5rem;text-align:center;color:#9ca3af;font-size:0.72rem;">Generated by Rent Book &bull; Kenya Rental Property Ledger &bull; ' + escapeHTML(refCode) + ' &bull; ' + escapeHTML(new Date().toLocaleDateString('en-KE')) + '</div>'
+          + '</div>';
+      }
+
+      function handleSaveInspection() {
+        const d = collectInspectionData();
+        if (!d.unitId) { showToast('Please select a unit.', 'warning'); return; }
+        if (!d.date) { showToast('Please select an inspection date.', 'warning'); return; }
+        if (!Array.isArray(appState.inspections)) appState.inspections = [];
+        const record = { id: generateId('insp'), unitId: d.unitId, unitName: d.unitName, type: d.type, date: d.date, inspector: d.inspector, inspectorPhone: d.inspectorPhone, tenantName: d.tenantName, tenantId: d.tenantId, tenantPhone: d.tenantPhone, waterMeter: d.waterMeter, kplcMeter: d.kplcMeter, keysMain: d.keysMain, keysGate: d.keysGate, keysInterior: d.keysInterior, overallNotes: d.overallNotes, rooms: d.rooms, createdAt: new Date().toISOString() };
+        appState.inspections.push(record);
+        saveState();
+        renderInspectionHistory(d.unitId);
+        showToast('Inspection for ' + d.unitName + ' saved to history!');
+      }
+
+      function renderInspectionHistory(unitId) {
+        const container = document.getElementById('inspHistoryList');
+        const countBadge = document.getElementById('inspHistoryCount');
+        if (!container) return;
+        const records = (appState.inspections || []).filter(function(r) { return r.unitId === unitId; }).sort(function(a, b) { return (b.createdAt || '').localeCompare(a.createdAt || ''); });
+        if (countBadge) countBadge.textContent = records.length + ' record' + (records.length !== 1 ? 's' : '');
+        if (records.length === 0) {
+          container.innerHTML = '<p class="small-meta" style="text-align:center;padding:0.5rem;">No inspection records yet for this unit.</p>';
+          return;
+        }
+        container.innerHTML = records.map(function(r) {
+          const typeLabel = {move_in:'Move-In', move_out:'Move-Out', routine:'Routine'}[r.type] || r.type;
+          const damagedItems = (r.rooms || []).reduce(function(acc, room) { return acc + (room.items || []).filter(function(i) { return i.condition === 'damaged'; }).length; }, 0);
+          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.75rem;border:1px solid var(--border-main);border-radius:var(--radius-sm);background:var(--bg-surface);flex-wrap:wrap;gap:0.35rem;"><div><span class="badge badge-neutral" style="margin-right:0.3rem;">' + escapeHTML(typeLabel) + '</span><strong style="font-size:0.85rem;">' + escapeHTML(formatDateKE(r.date)) + '</strong><span class="small-meta" style="margin-left:0.5rem;">' + escapeHTML(r.inspector || '') + '</span></div><div style="display:flex;gap:0.35rem;align-items:center;">' + (damagedItems > 0 ? '<span class="badge badge-status-damaged">\u26a0\ufe0f ' + damagedItems + ' Damaged</span>' : '<span class="badge badge-status-good">\u2713 Clean</span>') + '<button class="btn btn-sm btn-secondary" onclick="loadInspectionRecord(\'' + r.id + '\')">View</button><button class="btn btn-sm btn-danger" onclick="deleteInspectionRecord(\'' + r.id + '\')">🗑</button></div></div>';
+        }).join('');
+      }
+
+      function loadInspectionRecord(id) {
+        const record = (appState.inspections || []).find(function(r) { return r.id === id; });
+        if (!record) return;
+        document.getElementById('inspSelectUnit').value = record.unitId;
+        document.getElementById('inspType').value = record.type;
+        document.getElementById('inspDate').value = record.date;
+        document.getElementById('inspInspector').value = record.inspector || '';
+        document.getElementById('inspInspectorPhone').value = record.inspectorPhone || '';
+        document.getElementById('inspTenantName').value = record.tenantName || '';
+        document.getElementById('inspTenantId').value = record.tenantId || '';
+        document.getElementById('inspTenantPhone').value = record.tenantPhone || '';
+        document.getElementById('inspWaterMeter').value = record.waterMeter || '';
+        document.getElementById('inspKplcMeter').value = record.kplcMeter || '';
+        document.getElementById('inspKeysMain').value = record.keysMain || 0;
+        document.getElementById('inspKeysGate').value = record.keysGate || 0;
+        document.getElementById('inspKeysInterior').value = record.keysInterior || 0;
+        document.getElementById('inspOverallNotes').value = record.overallNotes || '';
+        inspectionItems = {};
+        (record.rooms || []).forEach(function(room, ri) {
+          (room.items || []).forEach(function(item, ii) {
+            inspectionItems[ri + '-' + ii] = { condition: item.condition || 'good', notes: item.notes || '' };
+          });
+        });
+        renderInspectionForm();
+        updateInspectionPreview();
+        showToast('Inspection record loaded. You can now print or update it.');
+      }
+
+      function deleteInspectionRecord(id) {
+        showConfirm('Delete Inspection Record', 'Are you sure you want to permanently delete this inspection record?', function() {
+          appState.inspections = (appState.inspections || []).filter(function(r) { return r.id !== id; });
+          saveState();
+          const unitId = document.getElementById('inspSelectUnit').value;
+          renderInspectionHistory(unitId);
+          showToast('Inspection record deleted.', 'warning');
+        });
+      }
+
+      function generateInspectionWhatsAppText() {
+        const d = collectInspectionData();
+        const prop = appState.property || {};
+        const typeLabel = {move_in:'Move-In Handover', move_out:'Move-Out Clearance', routine:'Routine Audit'}[d.type] || d.type;
+        const totalDamaged = (d.rooms || []).reduce(function(acc, r) { return acc + (r.items || []).filter(function(i) { return i.condition === 'damaged'; }).length; }, 0);
+        const totalFair = (d.rooms || []).reduce(function(acc, r) { return acc + (r.items || []).filter(function(i) { return i.condition === 'fair'; }).length; }, 0);
+        const totalGood = (d.rooms || []).reduce(function(acc, r) { return acc + (r.items || []).filter(function(i) { return i.condition === 'good'; }).length; }, 0);
+        let damagedList = '';
+        d.rooms.forEach(function(r) {
+          r.items.filter(function(i) { return i.condition === 'damaged'; }).forEach(function(i) {
+            damagedList += '  \u26a0\ufe0f ' + r.room + ': ' + i.name + (i.notes ? ' \u2014 ' + i.notes : '') + '\n';
+          });
+        });
+        return '*\ud83d\udccb ' + typeLabel.toUpperCase() + ' INSPECTION REPORT*\n*' + (prop.name || 'Rental Property') + '*\n*Unit:* ' + (d.unitName || 'N/A') + '\n*Date:* ' + formatDateKE(d.date) + '\n*Inspector:* ' + (d.inspector || prop.landlordName || 'Landlord') + '\n\n*TENANT DETAILS*\nName: ' + (d.tenantName || 'N/A') + '\nID: ' + (d.tenantId || 'N/A') + '\nPhone: ' + (d.tenantPhone || 'N/A') + '\n\n*KEYS HANDED OVER*\n\ud83d\udd11 Main Door: ' + d.keysMain + ' key(s)\n\ud83d\udd11 Gate/Padlock: ' + d.keysGate + ' key(s)\n\ud83d\udd11 Interior: ' + d.keysInterior + ' key(s)\n\n*UTILITY READINGS*\n\ud83d\udca7 Water Meter: ' + (d.waterMeter || 'Not recorded') + '\n\u26a1 KPLC Meter: ' + (d.kplcMeter || 'Not recorded') + '\n\n*CONDITION SUMMARY*\n\u2705 Good: ' + totalGood + ' items\n\u26a0\ufe0f Damaged: ' + totalDamaged + ' items\n\u2014 Fair: ' + totalFair + ' items\n\n' + (damagedList ? '*DEFECTS NOTED*\n' + damagedList : '*No defects noted.*') + '\n*REMARKS*\n' + (d.overallNotes || 'Premises inspected jointly and accepted by both parties.') + '\n\n_Please sign the printed Inspection Report._\n_\u2014 ' + (prop.name || 'Rent Book') + ' Property Management_';
+      }
+
+
       // --- RENDER VIEW 1: DASHBOARD ---
       function renderDashboard() {
         const metrics = getAggregateMetrics(activeMonth);
@@ -7453,6 +7998,9 @@
                   <button class="btn btn-sm btn-secondary view-agreement-btn" data-unit-id="${unit.id}" title="Generate Tenancy Agreement">
                     📜 Agreement
                   </button>
+                  <button class="btn btn-sm btn-secondary open-inspection-btn" data-unit-id="${unit.id}" title="Move-In / Move-Out Condition Inspection Checklist">
+                    📋 Inspect
+                  </button>
                   <button class="btn btn-sm btn-secondary open-vacate-btn" data-unit-id="${unit.id}" title="Move-Out Settlement &amp; Vacate Unit">
                     🚪 Vacate
                   </button>
@@ -7467,6 +8015,9 @@
                 ${isVacant ? `
                   <button class="btn btn-sm btn-secondary view-agreement-btn" data-unit-id="${unit.id}" title="Generate blank or custom Tenancy Agreement">
                     📜 Agreement
+                  </button>
+                  <button class="btn btn-sm btn-secondary open-inspection-btn" data-unit-id="${unit.id}" title="Move-In Baseline / Vacant Condition Inspection Checklist">
+                    📋 Inspect
                   </button>
                 ` : ''}
                 <button class="btn btn-sm btn-secondary edit-unit-btn" data-unit-id="${unit.id}" title="Edit unit details">
@@ -10285,6 +10836,67 @@
           settingsVacateBtn.addEventListener('click', () => handleOpenVacate());
         }
 
+        const openInspectionModalBtn = document.getElementById('openInspectionModalBtn');
+        if (openInspectionModalBtn) openInspectionModalBtn.addEventListener('click', () => handleOpenInspection());
+
+        const settingsInspectionBtn = document.getElementById('settingsInspectionBtn');
+        if (settingsInspectionBtn) settingsInspectionBtn.addEventListener('click', () => handleOpenInspection());
+
+        const saveInspectionBtn = document.getElementById('saveInspectionBtn');
+        if (saveInspectionBtn) saveInspectionBtn.addEventListener('click', handleSaveInspection);
+
+        const saveInspectionFooterBtn = document.getElementById('saveInspectionFooterBtn');
+        if (saveInspectionFooterBtn) saveInspectionFooterBtn.addEventListener('click', handleSaveInspection);
+
+        const printInspectionReportBtn = document.getElementById('printInspectionReportBtn');
+        if (printInspectionReportBtn) printInspectionReportBtn.addEventListener('click', () => window.print());
+
+        const whatsappInspectionBtn = document.getElementById('whatsappInspectionBtn');
+        if (whatsappInspectionBtn) {
+          whatsappInspectionBtn.addEventListener('click', () => {
+            const d = collectInspectionData();
+            const unit = appState.units.find(u => u.id === d.unitId);
+            const phone = (d.tenantPhone || (unit && unit.tenantPhone) || '').replace(/\D/g, '');
+            const intlPhone = phone.startsWith('0') ? '254' + phone.substring(1) : phone.startsWith('254') ? phone : '254' + phone;
+            const text = generateInspectionWhatsAppText();
+            window.open('https://wa.me/' + intlPhone + '?text=' + encodeURIComponent(text), '_blank');
+          });
+        }
+
+        const copyInspectionBtn = document.getElementById('copyInspectionBtn');
+        if (copyInspectionBtn) {
+          copyInspectionBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(generateInspectionWhatsAppText()).then(() => showToast('Inspection report copied!')).catch(() => showToast('Could not copy.', 'warning'));
+          });
+        }
+
+        const resetInspectionBtn = document.getElementById('resetInspectionBtn');
+        if (resetInspectionBtn) {
+          resetInspectionBtn.addEventListener('click', () => {
+            inspectionItems = {};
+            renderInspectionForm();
+            updateInspectionPreview();
+            showToast('Checklist reset to standard template.');
+          });
+        }
+
+        const inspSelectUnit = document.getElementById('inspSelectUnit');
+        if (inspSelectUnit) {
+          inspSelectUnit.addEventListener('change', () => {
+            loadInspectionTenantDetails(inspSelectUnit.value);
+            renderInspectionHistory(inspSelectUnit.value);
+            updateInspectionPreview();
+          });
+        }
+
+        ['inspType','inspDate','inspInspector','inspInspectorPhone','inspTenantName','inspTenantId','inspTenantPhone','inspWaterMeter','inspKplcMeter','inspKeysMain','inspKeysGate','inspKeysInterior','inspOverallNotes'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('input', updateInspectionPreview);
+            el.addEventListener('change', updateInspectionPreview);
+          }
+        });
+
         const vacUnitSelect = document.getElementById('vacSelectUnit');
         if (vacUnitSelect) {
           vacUnitSelect.addEventListener('change', () => {
@@ -10986,6 +11598,10 @@
 
         document.querySelectorAll('.view-agreement-btn').forEach(btn => {
           btn.addEventListener('click', () => handleOpenAgreement(btn.dataset.unitId));
+        });
+
+        document.querySelectorAll('.open-inspection-btn').forEach(btn => {
+          btn.addEventListener('click', () => handleOpenInspection(btn.dataset.unitId));
         });
 
         document.querySelectorAll('.open-vacate-btn').forEach(btn => {
