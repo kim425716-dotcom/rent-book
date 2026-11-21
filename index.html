@@ -1623,6 +1623,9 @@
           <button class="btn btn-secondary" id="openRentReviewModalBtn" title="Generate statutory 90-day rent review and increase notice">
             📈 Rent Review
           </button>
+          <button class="btn btn-secondary" id="openBatchUnitsModalBtn" title="Quickly add multiple houses or set up your building's units in batch">
+            🏢 Add Number of Houses
+          </button>
           <button class="btn btn-primary" id="addNewUnitBtn">
             + Add New Unit
           </button>
@@ -2181,6 +2184,22 @@
               <input type="text" id="settingPropertyName" class="form-input" placeholder="e.g. Baraka Heights, Roysambu">
             </div>
 
+            <div class="form-group" style="background: var(--bg-surface-alt); padding: 0.75rem 0.85rem; border-radius: var(--radius-sm); border: 1px dashed var(--border-main);">
+              <label for="settingTotalUnits" style="font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+                <span>Total Number of Houses / Units in Property</span>
+                <span class="badge badge-neutral" id="settingTotalUnitsBadge">Capacity</span>
+              </label>
+              <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.35rem; flex-wrap: wrap;">
+                <input type="number" id="settingTotalUnits" class="form-input" min="1" max="150" placeholder="e.g. 10, 16, 24 houses" style="max-width: 180px;">
+                <button type="button" class="btn btn-sm btn-secondary" id="syncUnitsWithTotalBtn" title="Automatically generate houses to match this total capacity" style="white-space: nowrap;">
+                  ⚡ Auto-Generate Houses
+                </button>
+              </div>
+              <span class="field-hint" style="margin-top: 0.35rem; display: block;">
+                The total housing capacity of your building (e.g. 12 apartments or 20 bedsitters).
+              </span>
+            </div>
+
             <div class="form-group">
               <label for="settingLandlordName">Landlord / Caretaker Name</label>
               <input type="text" id="settingLandlordName" class="form-input" placeholder="e.g. Brian Mwangi">
@@ -2581,6 +2600,22 @@
             <span class="field-error">Please enter a unit name.</span>
           </div>
 
+          <div class="form-group" id="groupUnitQuantity" style="background: var(--bg-surface-alt); padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); border: 1px dashed var(--border-main); margin-bottom: 0.85rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <label for="inputUnitQuantity" style="font-weight: 600; font-size: 0.85rem; margin: 0;">
+                Number of Houses to Add
+              </label>
+              <span class="badge badge-neutral" id="batchUnitsModeBadge" style="font-size: 0.75rem;">1 House</span>
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <input type="number" id="inputUnitQuantity" class="form-input" min="1" max="50" value="1" style="max-width: 100px;">
+              <span class="field-hint" style="margin: 0; font-size: 0.8rem;" id="batchUnitsHint">
+                Leave as 1 for single house, or enter e.g. 5 or 10 to auto-generate multiple houses!
+              </span>
+            </div>
+            <div id="batchUnitsPreviewChips" style="display: none; margin-top: 0.5rem; flex-wrap: wrap; gap: 0.35rem;"></div>
+          </div>
+
           <div class="form-group">
             <label class="checkbox-label">
               <input type="checkbox" id="inputIsVacant">
@@ -2650,6 +2685,122 @@
             <button type="button" class="btn btn-secondary" data-close-modal="unitModal">Cancel</button>
             <button type="submit" class="btn btn-primary" id="saveUnitSubmitBtn">Save Unit</button>
           </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       MODAL: ADD NUMBER OF HOUSES / BATCH UNIT GENERATOR
+       ======================================================================== -->
+  <div class="modal-backdrop" id="batchUnitsModal" role="dialog" aria-modal="true" aria-labelledby="batchUnitsModalTitle">
+    <div class="modal-dialog" style="max-width: 680px; width: 95%;">
+      <div class="modal-header">
+        <div>
+          <h3 id="batchUnitsModalTitle">🏢 Add Number of Houses</h3>
+          <p class="small-meta">Quickly generate and register multiple rental units, apartments, or rooms</p>
+        </div>
+        <button class="modal-close-btn" data-close-modal="batchUnitsModal" aria-label="Close modal">&times;</button>
+      </div>
+      <form id="batchUnitsForm">
+        <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem; max-height: 80vh; overflow-y: auto;">
+          <!-- Quick Preset Pills -->
+          <div>
+            <label style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; display: block;">Quick Presets: Number of Houses</label>
+            <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+              <button type="button" class="btn btn-sm btn-secondary batch-preset-btn" data-count="4">4 Houses</button>
+              <button type="button" class="btn btn-sm btn-secondary batch-preset-btn" data-count="6">6 Houses</button>
+              <button type="button" class="btn btn-sm btn-secondary batch-preset-btn" data-count="8">8 Houses</button>
+              <button type="button" class="btn btn-sm btn-secondary batch-preset-btn" data-count="10">10 Houses</button>
+              <button type="button" class="btn btn-sm btn-secondary batch-preset-btn" data-count="12">12 Houses</button>
+              <button type="button" class="btn btn-sm btn-secondary batch-preset-btn" data-count="16">16 Houses</button>
+              <button type="button" class="btn btn-sm btn-secondary batch-preset-btn" data-count="20">20 Houses</button>
+              <button type="button" class="btn btn-sm btn-secondary batch-preset-btn" data-count="24">24 Houses</button>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem;">
+            <div class="form-group">
+              <label for="batchCount">How Many Houses to Add? *</label>
+              <input type="number" id="batchCount" class="form-input" min="1" max="100" value="10" required>
+              <span class="field-hint">e.g. 10 houses or 20 rooms</span>
+            </div>
+
+            <div class="form-group">
+              <label for="batchNamingScheme">House Naming Style</label>
+              <select id="batchNamingScheme" class="form-select">
+                <option value="house">House 1, House 2, House 3...</option>
+                <option value="unit">Unit 1, Unit 2, Unit 3...</option>
+                <option value="room">Room 1, Room 2, Room 3...</option>
+                <option value="door">Door 1, Door 2, Door 3...</option>
+                <option value="bedsitter">Bedsitter 1, Bedsitter 2...</option>
+                <option value="a">A1, A2, A3...</option>
+                <option value="b">B1, B2, B3...</option>
+                <option value="flat">Flat 1, Flat 2, Flat 3...</option>
+                <option value="custom">Custom Prefix...</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="batchCustomPrefixGroup" class="form-group" style="display: none;">
+            <label for="batchCustomPrefix">Custom Name Prefix</label>
+            <input type="text" id="batchCustomPrefix" class="form-input" placeholder="e.g. Block C - ">
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.85rem;">
+            <div class="form-group">
+              <label for="batchStartNum">Starting Number</label>
+              <input type="number" id="batchStartNum" class="form-input" min="1" value="1">
+              <span class="field-hint">e.g. 1 (or 101 for 1st floor)</span>
+            </div>
+
+            <div class="form-group">
+              <label for="batchMonthlyRent">Default Monthly Rent (KES) *</label>
+              <div class="input-addon">
+                <span class="addon-prefix">KES</span>
+                <input type="number" id="batchMonthlyRent" class="form-input" min="0" step="500" value="12000" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="batchDeposit">Default Security Deposit (KES)</label>
+              <div class="input-addon">
+                <span class="addon-prefix">KES</span>
+                <input type="number" id="batchDeposit" class="form-input" min="0" step="500" value="12000">
+              </div>
+            </div>
+          </div>
+
+          <!-- Sync with property capacity checkbox -->
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="batchSyncCapacity" checked>
+              <span>Also update Property Total Capacity in settings to match total units</span>
+            </label>
+          </div>
+
+          <!-- Live Preview & Calculation Box -->
+          <div style="background: var(--bg-surface-alt); border: 1px solid var(--border-main); border-radius: var(--radius-md); padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+              <strong style="font-size: 0.9rem;">📋 Preview of Houses to be Added</strong>
+              <span class="badge badge-paid" id="batchYieldBadge" style="font-size: 0.8rem; font-weight: 700;">
+                Potential Yield: KES 120,000 / mo
+              </span>
+            </div>
+            <p class="small-meta" id="batchSummaryText" style="margin-bottom: 0.65rem;">
+              Will generate 10 vacant houses starting from House 1 to House 10.
+            </p>
+            <div id="batchPreviewChips" style="display: flex; flex-wrap: wrap; gap: 0.35rem; max-height: 120px; overflow-y: auto; padding: 0.35rem 0;">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close-modal="batchUnitsModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submitBatchUnitsBtn">
+            🚀 Create 10 Houses Now
+          </button>
         </div>
       </form>
     </div>
@@ -3736,7 +3887,7 @@
          ======================================================================== */
       const STORAGE_KEY = 'rentbook_kenya_data_v1';
       const THEME_KEY = 'rentbook_theme';
-      const MAX_UNITS = 50;
+      const MAX_UNITS = 150;
       const MAX_PAYMENTS = 5000;
       const MAX_BILLS = 5000;
       const MAX_STRING_LENGTH = 500;
@@ -3809,6 +3960,7 @@
             if (!appState.property) appState.property = { ...defaultState.property };
             if (!appState.property.paybillNumber) appState.property.paybillNumber = '522522';
             if (!appState.property.tillNumber) appState.property.tillNumber = '123456';
+            if (typeof appState.property.totalUnits !== 'number') appState.property.totalUnits = appState.units.length;
             if (!Array.isArray(appState.units)) appState.units = [];
             if (!Array.isArray(appState.payments)) appState.payments = [];
             if (!Array.isArray(appState.bills)) appState.bills = [];
@@ -6940,7 +7092,12 @@
 
         document.getElementById('statMonthCharges').textContent = formatKES(metrics.totalMonthCharges);
         document.getElementById('statOccupancyRate').textContent = `${metrics.occupancyRate}%`;
-        document.getElementById('statOccupancyCounts').textContent = `${metrics.occupiedUnits} of ${metrics.totalUnits} units occupied`;
+        const totalCapacity = (appState.property && appState.property.totalUnits > metrics.totalUnits) ? appState.property.totalUnits : metrics.totalUnits;
+        if (totalCapacity > metrics.totalUnits) {
+          document.getElementById('statOccupancyCounts').textContent = `${metrics.occupiedUnits} of ${metrics.totalUnits} created occupied (${totalCapacity} houses building capacity)`;
+        } else {
+          document.getElementById('statOccupancyCounts').textContent = `${metrics.occupiedUnits} of ${metrics.totalUnits} houses occupied`;
+        }
 
         document.getElementById('collectionRatePct').textContent = `${metrics.collectionRate}%`;
         document.getElementById('collectionProgressBar').style.width = `${metrics.collectionRate}%`;
@@ -7166,7 +7323,10 @@
               <p>Add your rental units to start tracking monthly rent charges, M-Pesa receipts, and utility bills.</p>
               <div style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap;">
                 <button class="btn btn-primary" onclick="document.getElementById('addNewUnitBtn').click()">
-                  + Add Your First Unit
+                  + Add Single Unit
+                </button>
+                <button class="btn btn-secondary" id="emptyBatchUnitsBtn">
+                  🏢 Add Number of Houses (Batch Setup)
                 </button>
                 <button class="btn btn-secondary" id="emptyLoadSampleBtn">
                   📥 Load 5 Sample Units
@@ -7176,6 +7336,8 @@
           `;
           const emptySampleBtn = document.getElementById('emptyLoadSampleBtn');
           if (emptySampleBtn) emptySampleBtn.addEventListener('click', loadSampleData);
+          const emptyBatchBtn = document.getElementById('emptyBatchUnitsBtn');
+          if (emptyBatchBtn) emptyBatchBtn.addEventListener('click', () => handleOpenBatchUnits());
           return;
         }
 
@@ -7797,6 +7959,15 @@
         document.getElementById('settingTillNumber').value = prop.tillNumber || '123456';
         document.getElementById('settingMpesaPaymentInstructions').value = prop.mpesaInstructions || '';
 
+        const totalUnitsInput = document.getElementById('settingTotalUnits');
+        if (totalUnitsInput) {
+          totalUnitsInput.value = prop.totalUnits || (appState.units.length || '');
+          const badge = document.getElementById('settingTotalUnitsBadge');
+          if (badge) {
+            badge.textContent = `${appState.units.length} Added / ${prop.totalUnits || appState.units.length} Target`;
+          }
+        }
+
         // Update brand title
         document.getElementById('appPropertyTitle').textContent = prop.name || 'Rent Book';
         document.getElementById('appPropertySubtitle').textContent = `${prop.landlordName ? prop.landlordName + ' • ' : ''}Kenya Rental Ledger`;
@@ -7948,6 +8119,15 @@
         document.getElementById('inputMoveInMonth').value = activeMonth;
         document.getElementById('inputUnitNotes').value = '';
         document.getElementById('tenantFieldsContainer').style.display = 'block';
+
+        const qtyGroup = document.getElementById('groupUnitQuantity');
+        if (qtyGroup) {
+          qtyGroup.style.display = 'block';
+          const qtyInput = document.getElementById('inputUnitQuantity');
+          if (qtyInput) qtyInput.value = '1';
+          updateUnitQuantityPreview();
+        }
+
         clearErrors('unitModal');
         openModal('unitModal');
       }
@@ -7955,6 +8135,9 @@
       function handleOpenEditUnit(unitId) {
         const unit = appState.units.find(u => u.id === unitId);
         if (!unit) return;
+
+        const qtyGroup = document.getElementById('groupUnitQuantity');
+        if (qtyGroup) qtyGroup.style.display = 'none';
 
         document.getElementById('unitModalTitle').textContent = 'Edit Unit Details';
         document.getElementById('saveUnitSubmitBtn').textContent = 'Update Unit';
@@ -8025,6 +8208,56 @@
 
         if (hasError) return;
 
+        // Check if batch adding multiple houses via unitModal
+        const quantityInput = document.getElementById('inputUnitQuantity');
+        const quantity = (!editId && quantityInput) ? (parseInt(quantityInput.value, 10) || 1) : 1;
+
+        if (!editId && quantity > 1) {
+          if (appState.units.length + quantity > MAX_UNITS) {
+            showToast(`Cannot add ${quantity} houses. Maximum capacity is ${MAX_UNITS} houses. Current: ${appState.units.length}`, 'warning');
+            return;
+          }
+
+          // Generate names (e.g. A1 -> A1, A2, A3; House 1 -> House 1, House 2; Bedsitter -> Bedsitter 1, Bedsitter 2)
+          const matchNum = name.match(/^(.*?)(\d+)$/);
+          let prefix = name.trim() + ' ';
+          let startNum = 1;
+          if (matchNum) {
+            prefix = matchNum[1];
+            startNum = parseInt(matchNum[2], 10);
+          }
+
+          const createdNames = [];
+          for (let i = 0; i < quantity; i++) {
+            const uName = prefix + (startNum + i);
+            createdNames.push(uName);
+            const newUnit = {
+              id: generateId('unit') + '_' + i,
+              name: uName,
+              isVacant: true,
+              tenantName: '',
+              tenantPhone: '',
+              tenantIdNumber: '',
+              depositAmount: depositAmount,
+              monthlyRent: monthlyRent,
+              moveInMonth: '',
+              notes: notes || 'Batch added house',
+              createdAt: new Date().toISOString()
+            };
+            appState.units.push(newUnit);
+          }
+
+          if (appState.property && (!appState.property.totalUnits || appState.property.totalUnits < appState.units.length)) {
+            appState.property.totalUnits = appState.units.length;
+          }
+
+          saveState();
+          closeModal('unitModal');
+          renderAll();
+          showToast(`✓ Successfully created ${quantity} houses (${createdNames[0]} to ${createdNames[createdNames.length - 1]})!`);
+          return;
+        }
+
         if (editId) {
           // Update
           const idx = appState.units.findIndex(u => u.id === editId);
@@ -8066,6 +8299,260 @@
         closeModal('unitModal');
         renderAll();
       }
+
+      // --- UNIT QUANTITY & BATCH HOUSE GENERATOR ENGINE ---
+      function updateUnitQuantityPreview() {
+        const qtyInput = document.getElementById('inputUnitQuantity');
+        const nameInput = document.getElementById('inputUnitName');
+        const badge = document.getElementById('batchUnitsModeBadge');
+        const chipsContainer = document.getElementById('batchUnitsPreviewChips');
+        const vacantCheckbox = document.getElementById('inputIsVacant');
+
+        if (!qtyInput || !nameInput) return;
+
+        const qty = parseInt(qtyInput.value, 10) || 1;
+        const name = (nameInput.value || '').trim();
+
+        if (qty <= 1) {
+          if (badge) badge.textContent = '1 House';
+          if (chipsContainer) chipsContainer.style.display = 'none';
+          return;
+        }
+
+        if (badge) badge.textContent = `${qty} Houses (Batch)`;
+        // If creating multiple houses, default them to vacant
+        if (vacantCheckbox && !vacantCheckbox.checked) {
+          vacantCheckbox.checked = true;
+          const tenantContainer = document.getElementById('tenantFieldsContainer');
+          if (tenantContainer) tenantContainer.style.display = 'none';
+        }
+
+        if (chipsContainer) {
+          chipsContainer.style.display = 'flex';
+          const matchNum = name.match(/^(.*?)(\d+)$/);
+          let prefix = name ? name + ' ' : 'House ';
+          let startNum = 1;
+          if (matchNum) {
+            prefix = matchNum[1];
+            startNum = parseInt(matchNum[2], 10);
+          }
+
+          let chipsHtml = '';
+          const previewLimit = Math.min(qty, 8);
+          for (let i = 0; i < previewLimit; i++) {
+            chipsHtml += `<span class="badge badge-neutral" style="font-size: 0.75rem;">${escapeHTML(prefix + (startNum + i))}</span>`;
+          }
+          if (qty > 8) {
+            chipsHtml += `<span class="badge badge-neutral" style="font-size: 0.75rem;">+${qty - 8} more (${escapeHTML(prefix + (startNum + qty - 1))})</span>`;
+          }
+          chipsContainer.innerHTML = chipsHtml;
+        }
+      }
+
+      function handleOpenBatchUnits(prefilledCount = null, prefilledStart = null) {
+        const countInput = document.getElementById('batchCount');
+        const startInput = document.getElementById('batchStartNum');
+        const rentInput = document.getElementById('batchMonthlyRent');
+        const depInput = document.getElementById('batchDeposit');
+
+        // Determine smart default count
+        let defCount = 10;
+        if (typeof prefilledCount === 'number' && prefilledCount > 0) {
+          defCount = prefilledCount;
+        } else if (appState.property && appState.property.totalUnits > appState.units.length) {
+          defCount = appState.property.totalUnits - appState.units.length;
+        }
+        if (countInput) countInput.value = Math.min(defCount, 50);
+
+        // Determine smart default starting number
+        let defStart = 1;
+        if (typeof prefilledStart === 'number' && prefilledStart > 0) {
+          defStart = prefilledStart;
+        } else if (appState.units.length > 0) {
+          // Look for highest trailing integer among existing units
+          let maxNum = 0;
+          appState.units.forEach(u => {
+            const m = (u.name || '').match(/(\d+)$/);
+            if (m) {
+              const n = parseInt(m[1], 10);
+              if (n > maxNum) maxNum = n;
+            }
+          });
+          defStart = maxNum > 0 ? maxNum + 1 : appState.units.length + 1;
+        }
+        if (startInput) startInput.value = defStart;
+
+        // Default rent based on existing average or standard 12,000
+        if (appState.units.length > 0) {
+          const sum = appState.units.reduce((acc, u) => acc + (Number(u.monthlyRent) || 0), 0);
+          const avg = Math.round(sum / appState.units.length);
+          if (rentInput && avg > 0) rentInput.value = avg;
+          if (depInput && avg > 0) depInput.value = avg;
+        }
+
+        updateBatchPreview();
+        openModal('batchUnitsModal');
+      }
+
+      function updateBatchPreview() {
+        const countInput = document.getElementById('batchCount');
+        const namingSelect = document.getElementById('batchNamingScheme');
+        const customPrefixInput = document.getElementById('batchCustomPrefix');
+        const customGroup = document.getElementById('batchCustomPrefixGroup');
+        const startInput = document.getElementById('batchStartNum');
+        const rentInput = document.getElementById('batchMonthlyRent');
+        const chipsContainer = document.getElementById('batchPreviewChips');
+        const summaryText = document.getElementById('batchSummaryText');
+        const yieldBadge = document.getElementById('batchYieldBadge');
+        const submitBtn = document.getElementById('submitBatchUnitsBtn');
+
+        if (!countInput || !namingSelect) return;
+
+        const count = Math.max(1, Math.min(100, parseInt(countInput.value, 10) || 1));
+        const scheme = namingSelect.value;
+        const startNum = parseInt(startInput ? startInput.value : 1, 10) || 1;
+        const rent = Number(rentInput ? rentInput.value : 0) || 0;
+
+        if (customGroup) {
+          customGroup.style.display = scheme === 'custom' ? 'block' : 'none';
+        }
+
+        const customPrefix = (customPrefixInput && customPrefixInput.value.trim()) || 'House ';
+
+        // Generate names
+        const names = [];
+        for (let i = 0; i < count; i++) {
+          const num = startNum + i;
+          let uName = '';
+          switch (scheme) {
+            case 'house': uName = `House ${num}`; break;
+            case 'unit': uName = `Unit ${num}`; break;
+            case 'room': uName = `Room ${num}`; break;
+            case 'door': uName = `Door ${num}`; break;
+            case 'bedsitter': uName = `Bedsitter ${num}`; break;
+            case 'a': uName = `A${num}`; break;
+            case 'b': uName = `B${num}`; break;
+            case 'flat': uName = `Flat ${num}`; break;
+            case 'custom': uName = `${customPrefix}${num}`; break;
+            default: uName = `House ${num}`;
+          }
+          names.push(uName);
+        }
+
+        // Potential Yield
+        const totalYield = count * rent;
+        if (yieldBadge) {
+          yieldBadge.textContent = `Monthly Potential: KES ${totalYield.toLocaleString('en-KE')} / mo`;
+        }
+
+        if (summaryText) {
+          summaryText.innerHTML = `Will create <strong>${count} vacant houses</strong> starting from <strong>${escapeHTML(names[0])}</strong> to <strong>${escapeHTML(names[names.length - 1])}</strong>.`;
+        }
+
+        if (chipsContainer) {
+          const maxChips = Math.min(names.length, 24);
+          let html = '';
+          for (let i = 0; i < maxChips; i++) {
+            html += `<span class="badge badge-neutral" style="font-size: 0.8rem;">${escapeHTML(names[i])}</span>`;
+          }
+          if (names.length > maxChips) {
+            html += `<span class="badge badge-neutral" style="font-size: 0.8rem;">+${names.length - maxChips} more...</span>`;
+          }
+          chipsContainer.innerHTML = html;
+        }
+
+        if (submitBtn) {
+          submitBtn.textContent = `🚀 Create ${count} Houses Now`;
+        }
+      }
+
+      function handleBatchUnitsSubmit(e) {
+        e.preventDefault();
+        const countInput = document.getElementById('batchCount');
+        const namingSelect = document.getElementById('batchNamingScheme');
+        const customPrefixInput = document.getElementById('batchCustomPrefix');
+        const startInput = document.getElementById('batchStartNum');
+        const rentInput = document.getElementById('batchMonthlyRent');
+        const depInput = document.getElementById('batchDeposit');
+        const syncCapacity = document.getElementById('batchSyncCapacity');
+
+        const count = Math.max(1, Math.min(100, parseInt(countInput.value, 10) || 1));
+        const scheme = namingSelect.value;
+        const startNum = parseInt(startInput ? startInput.value : 1, 10) || 1;
+        const rent = Math.max(0, Number(rentInput ? rentInput.value : 0) || 0);
+        const deposit = Math.max(0, Number(depInput ? depInput.value : 0) || 0);
+        const customPrefix = (customPrefixInput && customPrefixInput.value.trim()) || 'House ';
+
+        if (appState.units.length + count > MAX_UNITS) {
+          showToast(`Cannot add ${count} houses. Building capacity limit is ${MAX_UNITS}. You currently have ${appState.units.length} units.`, 'warning');
+          return;
+        }
+
+        const createdNames = [];
+        for (let i = 0; i < count; i++) {
+          const num = startNum + i;
+          let uName = '';
+          switch (scheme) {
+            case 'house': uName = `House ${num}`; break;
+            case 'unit': uName = `Unit ${num}`; break;
+            case 'room': uName = `Room ${num}`; break;
+            case 'door': uName = `Door ${num}`; break;
+            case 'bedsitter': uName = `Bedsitter ${num}`; break;
+            case 'a': uName = `A${num}`; break;
+            case 'b': uName = `B${num}`; break;
+            case 'flat': uName = `Flat ${num}`; break;
+            case 'custom': uName = `${customPrefix}${num}`; break;
+            default: uName = `House ${num}`;
+          }
+          createdNames.push(uName);
+
+          const newUnit = {
+            id: generateId('unit') + '_' + i,
+            name: uName,
+            isVacant: true,
+            tenantName: '',
+            tenantPhone: '',
+            tenantIdNumber: '',
+            depositAmount: deposit,
+            monthlyRent: rent,
+            moveInMonth: '',
+            notes: 'Batch created house',
+            createdAt: new Date().toISOString()
+          };
+          appState.units.push(newUnit);
+        }
+
+        if (syncCapacity && syncCapacity.checked) {
+          if (!appState.property) appState.property = {};
+          appState.property.totalUnits = appState.units.length;
+        }
+
+        saveState();
+        closeModal('batchUnitsModal');
+        renderAll();
+
+        showToast(`✓ Successfully created ${count} houses (${createdNames[0]} to ${createdNames[createdNames.length - 1]})!`);
+      }
+
+      function handleSyncUnitsWithTotal() {
+        const input = document.getElementById('settingTotalUnits');
+        const target = Number(input ? input.value : 0) || 0;
+        const current = appState.units.length;
+
+        if (target <= 0) {
+          showToast('Please enter your building\'s total number of houses (e.g. 10 or 16).', 'warning');
+          return;
+        }
+
+        if (target <= current) {
+          showToast(`You already have ${current} houses registered (Capacity is ${target}). Increase total capacity if you have more houses.`, 'info');
+          return;
+        }
+
+        const diff = target - current;
+        handleOpenBatchUnits(diff, current + 1);
+      }
+
 
       // --- PAYMENT FORM HANDLERS ---
       function handleOpenAddPayment(preselectedUnitId = '') {
@@ -9909,6 +10396,52 @@
         document.getElementById('dashAddBillBtn').addEventListener('click', () => handleOpenAddBill());
         document.getElementById('dashAddUnitBtn').addEventListener('click', handleOpenAddUnit);
         document.getElementById('addNewUnitBtn').addEventListener('click', handleOpenAddUnit);
+
+        const openBatchUnitsBtn = document.getElementById('openBatchUnitsModalBtn');
+        if (openBatchUnitsBtn) {
+          openBatchUnitsBtn.addEventListener('click', () => handleOpenBatchUnits());
+        }
+
+        const syncUnitsBtn = document.getElementById('syncUnitsWithTotalBtn');
+        if (syncUnitsBtn) {
+          syncUnitsBtn.addEventListener('click', handleSyncUnitsWithTotal);
+        }
+
+        // UnitModal Quantity change listener
+        const unitQtyInput = document.getElementById('inputUnitQuantity');
+        if (unitQtyInput) {
+          unitQtyInput.addEventListener('input', updateUnitQuantityPreview);
+        }
+        const unitNameInput = document.getElementById('inputUnitName');
+        if (unitNameInput) {
+          unitNameInput.addEventListener('input', () => {
+            const qty = parseInt(document.getElementById('inputUnitQuantity').value, 10) || 1;
+            if (qty > 1) updateUnitQuantityPreview();
+          });
+        }
+
+        // Batch Form Submit & Inputs
+        const batchForm = document.getElementById('batchUnitsForm');
+        if (batchForm) {
+          batchForm.addEventListener('submit', handleBatchUnitsSubmit);
+        }
+
+        ['batchCount', 'batchNamingScheme', 'batchCustomPrefix', 'batchStartNum', 'batchMonthlyRent', 'batchDeposit'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener('input', updateBatchPreview);
+            el.addEventListener('change', updateBatchPreview);
+          }
+        });
+
+        document.querySelectorAll('.batch-preset-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const count = parseInt(btn.dataset.count, 10);
+            const countInput = document.getElementById('batchCount');
+            if (countInput) countInput.value = count;
+            updateBatchPreview();
+          });
+        });
         document.getElementById('openAddPaymentModalBtn').addEventListener('click', () => handleOpenAddPayment());
         document.getElementById('openAddBillModalBtn').addEventListener('click', () => handleOpenAddBill());
         document.getElementById('howItWorksBtn').addEventListener('click', () => openModal('howItWorksModal'));
@@ -10086,13 +10619,16 @@
         // Property Settings Form
         document.getElementById('propertySettingsForm').addEventListener('submit', (e) => {
           e.preventDefault();
+          const totalUnitsVal = Number(document.getElementById('settingTotalUnits').value) || 0;
           appState.property = {
+            ...(appState.property || {}),
             name: document.getElementById('settingPropertyName').value.trim() || 'Rent Book',
             landlordName: document.getElementById('settingLandlordName').value.trim() || '',
             phone: document.getElementById('settingLandlordPhone').value.trim() || '',
             paybillNumber: document.getElementById('settingPaybillNumber').value.trim() || '522522',
             tillNumber: document.getElementById('settingTillNumber').value.trim() || '123456',
-            mpesaInstructions: document.getElementById('settingMpesaPaymentInstructions').value.trim() || ''
+            mpesaInstructions: document.getElementById('settingMpesaPaymentInstructions').value.trim() || '',
+            totalUnits: totalUnitsVal
           };
           saveState();
           renderSettings();
